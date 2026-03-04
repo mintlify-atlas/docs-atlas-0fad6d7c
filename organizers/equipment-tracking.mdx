@@ -1,0 +1,337 @@
+---
+title: Equipment Tracking
+description: Managing sleeping bag and hardware checkouts and returns
+---
+
+## Overview
+
+The equipment tracking system manages loaning items to attendees and tracking returns. Currently supports sleeping bags and hardware kits.
+
+Access the sleeping bag dashboard at `/admin/sleeping-bags`.
+
+## Equipment Types
+
+```prisma
+enum EquipmentType {
+  SLEEPING_BAG
+  HARDWARE
+}
+```
+
+### SLEEPING_BAG
+Sleeping bags provided for overnight attendees.
+
+### HARDWARE  
+Electronics and development kits (Arduino, Raspberry Pi, sensors, etc.)
+
+## Equipment Actions
+
+```prisma
+enum EquipmentAction {
+  CHECK_OUT
+  RETURN
+}
+```
+
+## Equipment Logs
+
+Every checkout and return creates an EquipmentLog:
+
+```prisma
+model EquipmentLog {
+  id        String          @id @default(cuid())
+  userId    String
+  user      User            @relation(...)
+  timestamp DateTime        @default(now())
+  type      EquipmentType   // SLEEPING_BAG or HARDWARE
+  action    EquipmentAction // CHECK_OUT or RETURN
+  adminId   String
+  admin     User            @relation("EquipmentAdmin", ...)
+  items     Json?           // For hardware: { "Arduino Uno": 1, "Breadboard": 2 }
+  notes     String?         // Optional admin notes
+}
+```
+
+Key fields:
+- **userId** - Who received/returned the item
+- **adminId** - Which organizer processed the transaction
+- **timestamp** - When the action occurred
+- **items** - JSON object for hardware kits (what specific items)
+- **notes** - Any special notes (e.g., "damaged upon return")
+
+## Sleeping Bag Workflow
+
+### Check-Out Process
+
+Scan user QR code at the `sleepingBagborrow` station:
+
+```tsx
+await scan({
+  id: userId,
+  stationId: "sleepingBagborrow"
+})
+```
+
+Validations:
+- User must be CHECKED_IN to the event
+- User cannot have an unreturned sleeping bag
+
+Creates log:
+```tsx
+{
+  type: EquipmentType.SLEEPING_BAG,
+  action: EquipmentAction.CHECK_OUT,
+  userId: userId,
+  adminId: scannerUserId,
+  timestamp: new Date()
+}
+```
+
+### Return Process
+
+Scan user QR code at the `sleepingBagreturn` station:
+
+```tsx
+await scan({
+  id: userId,
+  stationId: "sleepingBagreturn"
+})
+```
+
+Validations:
+- User must have an unreturned sleeping bag (checkouts > returns)
+
+Creates log:
+```tsx
+{
+  type: EquipmentType.SLEEPING_BAG,
+  action: EquipmentAction.RETURN,
+  userId: userId,
+  adminId: scannerUserId,
+  timestamp: new Date()
+}
+```
+
+### Determining Current Status
+
+The system counts checkouts vs returns:
+
+```tsx
+const logs = await prisma.equipmentLog.findMany({
+  where: {
+    userId: userId,
+    type: EquipmentType.SLEEPING_BAG
+  }
+})
+
+const checkouts = logs.filter(log => log.action === "CHECK_OUT").length
+const returns = logs.filter(log => log.action === "RETURN").length
+
+const hasUnreturnedBag = checkouts > returns
+```
+
+<Note>
+If a user loses a sleeping bag and checks out a second one, the system tracks this. They would need to return twice (once they find the first bag).
+</Note>
+
+## Sleeping Bag Dashboard
+
+The `/admin/sleeping-bags` page provides comprehensive tracking:
+
+### Statistics Cards
+
+- **Currently Checked Out**: Active loans (checkouts - returns)
+- **Total Checkouts**: All-time checkout count
+- **Total Returns**: All-time return count
+
+### Unreturned Bags Tab
+
+Shows all users currently holding sleeping bags:
+
+| User | Given Out By | Checked Out |
+|------|--------------|-------------|
+| John Smith | Admin Name | 1/15 11:30 PM |
+| Jane Doe | Admin Name | 1/16 2:00 AM |
+
+Use this to:
+- Track who has bags before closing
+- Follow up with users to return bags
+- Identify which admin processed the checkout
+
+### Activity Log Tab
+
+Complete history of all checkouts and returns with filters:
+
+**Action Filter**
+- All Actions
+- Checked Out only
+- Returned only
+
+**Search**  
+Find by user name or email
+
+**Columns**
+- User (name, email, avatar)
+- Action (CHECK_OUT badge or RETURN badge)
+- Processed By (admin who scanned)
+- Timestamp (date and time)
+
+### Infinite Scroll
+
+Logs load 50 at a time for performance on large events.
+
+## Hardware Tracking
+
+While HARDWARE is a defined equipment type, the current implementation focuses on sleeping bags. To extend for hardware:
+
+### Recommended Implementation
+
+1. Create hardware checkout stations:
+```tsx
+stationId: "hardwareCheckout"
+stationId: "hardwareReturn"
+```
+
+2. Use the `items` JSON field:
+```tsx
+await createEquipmentLog({
+  type: EquipmentType.HARDWARE,
+  action: EquipmentAction.CHECK_OUT,
+  userId: userId,
+  adminId: scannerUserId,
+  items: {
+    "Arduino Uno": 1,
+    "Breadboard": 1,
+    "LED Pack": 1,
+    "Jumper Wires": 20
+  },
+  notes: "Project: Smart Home Automation"
+})
+```
+
+3. Track inventory:
+```tsx
+// Total Arduino Unos checked out
+const arduinoLogs = await prisma.equipmentLog.findMany({
+  where: {
+    type: EquipmentType.HARDWARE,
+    items: { path: ["Arduino Uno"], not: null }
+  }
+})
+
+// Calculate total checked out vs returned
+```
+
+## Mobile Interface
+
+The sleeping bag dashboard is fully responsive:
+
+**Desktop**: Table view with sortable columns
+
+**Mobile**: Card-based layout with:
+- User avatar and name
+- Action badge
+- Admin info
+- Timestamp
+- Swipeable cards
+
+## Error Handling
+
+### Checkout Errors
+
+**Already has bag**
+```
+User has already checked out a sleeping bag
+```
+- User has unreturned sleeping bag
+- Check unreturned bags list to verify
+
+**Not checked in**
+```
+User is not checked in
+```
+- User must check in to event first
+
+### Return Errors
+
+**No bag checked out**
+```
+User has not checked out a sleeping bag  
+```
+- User trying to return but has no active checkout
+- May have already returned it
+
+## Admin Accountability
+
+Every transaction records which admin processed it via `adminId`. This provides:
+
+- **Accountability** if items go missing
+- **Training feedback** for new volunteers
+- **Workload tracking** to recognize active volunteers
+
+View admin activity:
+```tsx
+const adminLogs = await prisma.equipmentLog.findMany({
+  where: { adminId: adminUserId },
+  include: { user: true }
+})
+```
+
+## Best Practices
+
+### For Sleeping Bags
+
+1. **Set up dedicated stations** at sleeping area entrance/exit
+2. **Assign 2+ volunteers** to handle checkout/returns
+3. **Number the bags** (1-100) for physical inventory
+4. **Check dashboard before closing** to identify unreturned bags
+5. **Add notes** for damaged items:
+   ```tsx
+   notes: "Zipper broken, removed from inventory"
+   ```
+
+### For Hardware
+
+1. **Use items JSON** to track specific components
+2. **Add project notes** to understand usage
+3. **Take deposits** (not tracked in system, handle separately)
+4. **Inspect returns** before marking as returned
+5. **Track by kit** instead of individual components
+
+## Analytics
+
+### Peak Usage Times
+```tsx
+const hourlyCheckouts = await prisma.equipmentLog.groupBy({
+  by: ["timestamp"],
+  where: {
+    type: EquipmentType.SLEEPING_BAG,
+    action: EquipmentAction.CHECK_OUT,
+    timestamp: {
+      gte: eventStartDate,
+      lte: eventEndDate
+    }
+  }
+})
+```
+
+### Return Rate
+```tsx
+const stats = await getSleepingBagStats()
+const returnRate = (stats.totalReturns / stats.totalCheckouts) * 100
+```
+
+### Active Volunteers
+```tsx
+const volunteerStats = await prisma.equipmentLog.groupBy({
+  by: ["adminId"],
+  _count: { id: true },
+  orderBy: { _count: { id: "desc" } }
+})
+```
+
+## Related Pages
+
+- [Event Management](/organizers/event-management) - Similar QR scanning workflow
+- [User Management](/organizers/user-management) - Assign scanner permissions
+- [Admin Dashboard](/organizers/admin-dashboard) - Overview statistics

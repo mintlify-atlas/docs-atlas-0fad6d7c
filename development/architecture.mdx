@@ -1,0 +1,243 @@
+---
+title: Architecture Overview
+description: System architecture and technical stack of the DeltaHacks Portal
+---
+
+## Overview
+
+The DeltaHacks Portal is built using the **T3 Stack**, a modern, type-safe full-stack TypeScript framework. The portal serves as a unified platform for hackers, organizers, judges, sponsors, and volunteers to manage all aspects of the DeltaHacks hackathon.
+
+## Philosophy
+
+The portal consolidates multiple dashboards (hackers, volunteers, judges, sponsors) into a single, unified platform. This approach provides:
+
+- **Single source of truth** for all hackathon data
+- **Cohesive experience** across different user groups
+- **Simplified maintenance** and development
+- **Consistent authentication** and authorization
+
+## Technology Stack
+
+The DeltaHacks Portal follows the **T3 Stack** principles and includes:
+
+### Core Framework
+
+- **[Next.js 15](https://nextjs.org/)** - React framework with App Router and Pages Router
+- **[TypeScript 5.8](https://www.typescriptlang.org/)** - Type safety across the entire stack
+- **[React 19](https://react.dev/)** - UI library with hooks and server components
+
+### API Layer
+
+- **[tRPC 11](https://trpc.io/)** - End-to-end typesafe APIs without code generation
+- **[Zod 4](https://zod.dev/)** - Schema validation and type inference
+- **[SuperJSON](https://github.com/blitz-js/superjson)** - JSON serialization with Date, Map, Set support
+
+### Database
+
+- **[Prisma 6](https://www.prisma.io/)** - Next-generation ORM
+- **[CockroachDB](https://www.cockroachlabs.com/)** - Distributed SQL database
+
+### Authentication
+
+- **[NextAuth.js 4](https://next-auth.js.org/)** - Authentication for Next.js
+- **OAuth Providers**: Discord, Google, GitHub, LinkedIn, Azure AD
+- **Prisma Adapter** - Session storage in database
+
+### Styling
+
+- **[TailwindCSS 3](https://tailwindcss.com/)** - Utility-first CSS framework
+- **[DaisyUI 4](https://daisyui.com/)** - Component library for Tailwind
+- **[shadcn/ui](https://ui.shadcn.com/)** - Re-usable components built with Radix UI
+
+### State Management & Data Fetching
+
+- **[TanStack Query 5](https://tanstack.com/query)** - Async state management
+- **[React Hook Form 7](https://react-hook-form.com/)** - Performant form validation
+
+### File Management
+
+- **[AWS SDK for S3](https://aws.amazon.com/sdk-for-javascript/)** - File uploads to Cloudflare R2
+- **[Uppy](https://uppy.io/)** - File uploader UI
+
+### Additional Services
+
+- **[SendGrid](https://sendgrid.com/)** - Email service
+- **[PostHog](https://posthog.com/)** - Product analytics
+- **[LogSnag](https://logsnag.com/)** - Event tracking and notifications
+
+## Project Structure
+
+```
+src/
+├── app/                 # Next.js App Router (API routes)
+│   └── api/            # API route handlers
+├── assets/              # Static assets (pass files, images, etc.)
+├── components/          # Reusable React components
+├── data/               # Static data and constants
+├── env/                # Environment variable schemas
+├── pages/              # Next.js Pages Router (main application)
+│   ├── api/
+│   │   └── auth/       # NextAuth configuration
+│   ├── admin/          # Admin dashboard pages
+│   ├── apply.tsx       # Application form
+│   ├── dashboard.tsx   # User dashboard
+│   ├── judging.tsx     # Judging interface
+│   └── scanner.tsx     # QR code scanner
+├── schemas/            # Zod schemas for validation
+├── server/             # Server-side code
+│   ├── router/         # tRPC routers
+│   ├── common/         # Shared server utilities
+│   └── db/             # Database client
+├── styles/             # Global styles
+├── types/              # TypeScript type definitions
+└── utils/              # Utility functions
+
+prisma/
+└── schema.prisma       # Database schema
+```
+
+## Architecture Patterns
+
+### Next.js Routing
+
+The portal uses a **hybrid routing approach**:
+
+- **Pages Router** (`src/pages/`) - Main application pages and legacy routes
+  - Most user-facing pages (dashboard, apply, judging, scanner)
+  - NextAuth API routes
+  - Server-side rendering and static generation
+
+- **App Router** (`src/app/`) - Modern API routes
+  - Custom API endpoints
+  - Leverages React Server Components
+
+### API Architecture
+
+tRPC provides the primary API layer:
+
+```typescript
+// Client-side usage
+const { data, isLoading } = trpc.application.status.useQuery();
+
+// Server-side procedure
+export const applicationRouter = router({
+  status: protectedProcedure
+    .output(z.enum(Status))
+    .query(async ({ ctx }) => {
+      // Type-safe database access
+      const user = await ctx.prisma.user.findFirst({
+        where: { id: ctx.session.user.id },
+        include: { DH12Application: true },
+      });
+      return user.DH12Application.status;
+    }),
+});
+```
+
+### Database Layer
+
+Prisma provides type-safe database access:
+
+```typescript
+// Auto-generated types from schema
+const user = await prisma.user.findFirst({
+  where: { email: session.user.email },
+  include: {
+    DH12Application: true,
+    accounts: true,
+  },
+});
+```
+
+### Authentication Flow
+
+1. User selects OAuth provider (Discord, Google, GitHub, LinkedIn, Azure AD)
+2. NextAuth handles OAuth flow and creates session
+3. Prisma Adapter stores user, account, and session in database
+4. Session includes user ID and roles for authorization
+5. Protected tRPC procedures check session and roles
+
+### Role-Based Access Control
+
+The system implements RBAC through user roles:
+
+```typescript
+enum Role {
+  HACKER          // Regular participants
+  ADMIN           // Full access
+  REVIEWER        // Application reviewers
+  FOOD_MANAGER    // Meal management
+  EVENT_MANAGER   // Event check-ins
+  GENERAL_SCANNER // QR scanning
+  SPONSER         // Sponsor access
+  JUDGE           // Project judging
+}
+```
+
+Roles are checked in protected procedures:
+
+```typescript
+if (!ctx.session.user.role.includes(Role.ADMIN)) {
+  throw new TRPCError({ code: "UNAUTHORIZED" });
+}
+```
+
+## Key Features
+
+The architecture supports these major features:
+
+- **OAuth2 Authentication** - Multiple provider support
+- **Hacker Applications** - Multi-year application system (DH10, DH11, DH12)
+- **Application Reviews** - Reviewer scoring and comments
+- **Attendee Dashboard** - RSVP, QR codes, meal tracking
+- **Administration Dashboard** - User management, statistics
+- **Judging Portal** - Project submissions, rubrics, scheduling
+- **QR Code System** - Meal tickets and event check-ins
+- **Equipment Tracking** - Hardware and sleeping bag checkout
+- **File Uploads** - Resume uploads to Cloudflare R2
+
+## Development Workflow
+
+### Type Safety Flow
+
+1. Define Prisma schema → Generates TypeScript types
+2. Create Zod validation schemas → Runtime validation
+3. Build tRPC procedures → End-to-end type safety
+4. Use in React components → Fully typed data
+
+### Data Flow
+
+```
+Client Component
+  ↓ (tRPC hook)
+tRPC Client
+  ↓ (HTTP/WebSocket)
+tRPC Server Procedure
+  ↓ (Prisma)
+CockroachDB
+```
+
+## Hosting & Infrastructure
+
+The project uses Platform-as-a-Service (PaaS) providers:
+
+- **Vercel/Netlify** - Frontend and API hosting
+- **CockroachDB Serverless** - Managed database
+- **Cloudflare R2** - File storage (S3-compatible)
+- **SendGrid** - Email delivery
+
+## Development Environment
+
+Local development uses:
+
+- **Docker/OrbStack** - Local CockroachDB instance
+- **pnpm** - Fast, efficient package manager
+- **Prisma Studio** - Database GUI
+- **Next.js Dev Server** - Hot reload, Fast Refresh
+
+## See Also
+
+- [Database Schema](/development/database-schema) - Detailed schema documentation
+- [tRPC API](/development/trpc-api) - API router reference
+- [Authentication](/development/authentication) - Auth system details
+- [Contributing](/development/contributing) - Development guidelines

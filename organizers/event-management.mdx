@@ -1,0 +1,344 @@
+---
+title: Event Management
+description: Managing check-ins, meals, and event attendance with QR code scanning
+---
+
+## Overview
+
+Event management tools help organizers track attendee participation throughout DeltaHacks using QR code scanning. This includes check-in, meal distribution, and event attendance.
+
+## Station Configuration
+
+Stations are configurable check-in points for different purposes. Manage stations at `/admin/station-config`.
+
+### Station Types
+
+Stations are categorized by `name`:
+
+#### Food Stations
+Track meal distribution and dietary restrictions.
+
+Example options:
+- "Breakfast - Saturday"
+- "Lunch - Saturday"
+- "Dinner - Saturday"
+- "Midnight Snack"
+- "Breakfast - Sunday"
+
+#### Event Stations  
+Track attendance at workshops and activities.
+
+Example options:
+- "Opening Ceremony"
+- "Workshop - Intro to React"
+- "Workshop - ML Basics"
+- "Sponsor Fair"
+- "Closing Ceremony"
+
+### Station Data Model
+
+```prisma
+model Station {
+  id        String     @id @default(cuid())
+  name      String     // "food" or "events"
+  option    String     // Specific meal/event name
+  eventLogs EventLog[]
+  
+  @@unique([name, option])
+}
+```
+
+The `name` + `option` combination must be unique.
+
+### Creating Stations
+
+1. Navigate to `/admin/station-config`
+2. Choose **Food Options** or **Event Options** section
+3. Enter the option name (e.g., "Lunch - Saturday")
+4. Click **Add**
+
+```tsx
+await createStation({
+  name: "food",
+  option: "Lunch - Saturday"
+})
+```
+
+### Editing Stations
+
+Click the edit icon on a station to rename it. This updates all existing EventLogs to reference the new name.
+
+### Deleting Stations
+
+<Warning>
+Stations with existing EventLog entries cannot be deleted. You can only edit their names or delete unused stations.
+</Warning>
+
+## QR Code Scanning
+
+Authorized users can scan attendee QR codes to log participation.
+
+### Scanner Roles
+
+These roles can scan QR codes:
+- **ADMIN** - Can scan all stations
+- **FOOD_MANAGER** - Can scan food stations
+- **EVENT_MANAGER** - Can scan event stations  
+- **GENERAL_SCANNER** - Can scan both food and events
+
+### Check-In Process
+
+#### Initial Check-In (Status: RSVP → CHECKED_IN)
+
+The special `checkIn` station changes user status:
+
+```tsx
+await scan({
+  id: userId,
+  stationId: "checkIn"
+})
+```
+
+Validations:
+- User must have `status: RSVP` (confirmed attendance)
+- Users with REJECTED, WAITLISTED, or ACCEPTED (not RSVP'd) status will be denied
+- Returns user's **t-shirt size** in metadata
+
+On success:
+- User status changes to `CHECKED_IN`
+- EventLog entry created
+- User can now access food/event stations
+
+#### Food Distribution
+
+Scan QR code at a food station:
+
+```tsx
+await scan({
+  id: userId,
+  stationId: foodStationId // e.g., station for "Lunch - Saturday"
+})
+```
+
+Validations:
+- User must be `CHECKED_IN`
+- User cannot scan same food station twice (prevents double-claims)
+
+Returns:
+- User's **dietary restrictions** in metadata for kitchen reference
+
+#### Event Attendance
+
+Scan QR code at an event station:
+
+```tsx
+await scan({
+  id: userId,
+  stationId: eventStationId // e.g., station for "Workshop - React"
+})
+```
+
+Validations:
+- User must be `CHECKED_IN`  
+- User cannot scan same event station twice
+
+Use event logs to:
+- Track workshop attendance
+- Award prizes for participation
+- Measure event popularity
+
+## Event Logs
+
+All scans create EventLog entries:
+
+```prisma
+model EventLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(...)
+  timestamp DateTime @default(now())
+  stationId String
+  station   Station  @relation(...)
+  
+  @@unique([userId, stationId])
+}
+```
+
+The unique constraint on `[userId, stationId]` prevents duplicate scans.
+
+### Viewing Event Logs
+
+Access comprehensive logs at `/admin/scanner-events`.
+
+#### Filters
+
+- **Station Type**: Filter by "food" or "events"
+- **Station Option**: Filter by specific meal/event
+- **Search**: Find by user name or email
+
+#### Infinite Scroll
+
+Logs load 50 at a time with "Load More" button for performance.
+
+### Event Log Statistics
+
+The scanner events page shows:
+
+```tsx
+{
+  totalLogs: 1247,
+  foodLogs: 678,
+  eventLogs: 569,
+  stationCounts: [
+    { name: "food", option: "Lunch - Saturday", _count: { eventLogs: 234 } },
+    { name: "events", option: "Opening Ceremony", _count: { eventLogs: 456 } }
+    // ...
+  ]
+}
+```
+
+Use this data to:
+- Determine meal counts for catering
+- Measure event popularity
+- Track overall engagement
+
+## Special Stations
+
+### Check-In Station
+
+- **ID**: `"checkIn"`
+- **Purpose**: Initial event check-in
+- **Effect**: Changes status from RSVP → CHECKED_IN
+- **Returns**: T-shirt size
+
+### Judge Assignment Station
+
+- **ID**: `"judges"`  
+- **Purpose**: Assign JUDGE role to external judges
+- **Effect**: Adds JUDGE role to user
+- **Requires**: ADMIN role to scan
+
+<Note>
+The "judges" station is used to quickly onboard external judges. Scan their QR code to grant judging access.
+</Note>
+
+## Mobile Scanning App
+
+For optimal scanning experience:
+
+1. Use a dedicated tablet/phone for each station
+2. Keep device charged and connected to WiFi
+3. Use camera-based QR scanning (native or web)
+4. Have backup manual search in case QR code doesn't scan
+
+### Search Users
+
+If QR code fails, search by name:
+
+```tsx
+const users = await searchUsers({
+  query: "John Smith"
+})
+
+// Returns users with matching:
+// - name
+// - email
+// - firstName/lastName from application
+```
+
+Then scan by user ID.
+
+## Meal Tracking
+
+Users have meal-related fields:
+
+```prisma
+model User {
+  mealsTaken    Int      @default(0)
+  lastMealTaken DateTime?
+}
+```
+
+These fields are **not currently used** by the scanner system but can be implemented for:
+- Per-user meal limits
+- Time-based meal restrictions (e.g., one meal per 4 hours)
+
+## Error Handling
+
+### Common Errors
+
+**User not found**
+```
+Attendee not found. This QR code is not registered.
+```
+- QR code is invalid or user doesn't exist
+
+**User not accepted**
+```
+User was not accepted to the event
+```
+- User has status IN_REVIEW, REJECTED, WAITLISTED, or ACCEPTED (without RSVP)
+
+**Already checked in**
+```
+User is already checked in
+```  
+- User already scanned the checkIn station
+
+**Already scanned**
+```
+This user has already claimed a meal
+```
+```  
+This user has already checked in for this event
+```
+- User already scanned this specific food/event station
+
+**Not checked in**
+```
+User is not checked in
+```
+- User trying to access food/event station without checking in first
+
+## Analytics Queries
+
+### Total Check-Ins
+```tsx
+const checkIns = await prisma.user.count({
+  where: {
+    DH12Application: {
+      status: "CHECKED_IN"
+    }
+  }
+})
+```
+
+### Food Station Usage
+```tsx
+const lunchCount = await prisma.eventLog.count({
+  where: {
+    station: {
+      name: "food",
+      option: "Lunch - Saturday"
+    }
+  }
+})
+```
+
+### Event Attendance  
+```tsx
+const workshopAttendance = await prisma.eventLog.count({
+  where: {
+    station: {
+      name: "events",
+      option: "Workshop - React"
+    }
+  }
+})
+```
+
+## Related Pages
+
+- [User Management](/organizers/user-management) - Assign scanner roles
+- [Equipment Tracking](/organizers/equipment-tracking) - Similar scanning workflow
+- [Admin Dashboard](/organizers/admin-dashboard) - View overall statistics

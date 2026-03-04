@@ -1,0 +1,301 @@
+---
+title: Scanner Router
+description: API reference for event scanning and check-in procedures
+---
+
+The Scanner router handles QR code scanning, check-ins, event tracking, and station management.
+
+## Procedures
+
+### getEventLogs
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN role required)
+
+Get paginated event logs with filtering.
+
+<ParamField path="limit" type="number" required>
+  Number of results per page (1-100, default 50)
+</ParamField>
+
+<ParamField path="cursor" type="string" optional>
+  Cursor for pagination
+</ParamField>
+
+<ParamField path="stationType" type="enum" optional>
+  Filter by station type ("food" or "events")
+</ParamField>
+
+<ParamField path="stationId" type="string" optional>
+  Filter by specific station ID
+</ParamField>
+
+<ParamField path="search" type="string" optional>
+  Search by user name, email, or application name
+</ParamField>
+
+<ResponseField name="items" type="array">
+  Array of event log entries with user and station information
+</ResponseField>
+
+<ResponseField name="nextCursor" type="string" optional>
+  Cursor for next page
+</ResponseField>
+
+**Example:**
+```typescript
+const logs = await trpc.scanner.getEventLogs.useQuery({
+  limit: 50,
+  stationType: "food",
+  search: "john"
+});
+```
+
+---
+
+### getEventLogStats
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN role required)
+
+Get statistics about event logs.
+
+<ParamField path="No input parameters" />
+
+<ResponseField name="totalLogs" type="number">
+  Total number of event logs
+</ResponseField>
+
+<ResponseField name="foodLogs" type="number">
+  Number of food station logs
+</ResponseField>
+
+<ResponseField name="eventLogs" type="number">
+  Number of event station logs
+</ResponseField>
+
+<ResponseField name="stationCounts" type="array">
+  Count of logs per station
+</ResponseField>
+
+**Example:**
+```typescript
+const stats = await trpc.scanner.getEventLogStats.useQuery();
+// Returns: { totalLogs: 450, foodLogs: 250, eventLogs: 200, ... }
+```
+
+---
+
+### listStations
+
+**Type:** Query  
+**Authentication:** Protected
+
+Get all stations grouped by type.
+
+<ParamField path="No input parameters" />
+
+<ResponseField name="[stationType]" type="array">
+  Object mapping station types to arrays of stations
+</ResponseField>
+
+**Example:**
+```typescript
+const stations = await trpc.scanner.listStations.useQuery();
+// Returns: { "food": [...], "events": [...] }
+```
+
+---
+
+### getStationOptions
+
+**Type:** Query  
+**Authentication:** Protected
+
+Get all options for a specific station type.
+
+<ParamField path="name" type="string" required>
+  Station name/type
+</ParamField>
+
+<ResponseField name="id" type="string">
+  Station ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Station name
+</ResponseField>
+
+<ResponseField name="option" type="string">
+  Station option
+</ResponseField>
+
+**Example:**
+```typescript
+const options = await trpc.scanner.getStationOptions.useQuery({
+  name: "food"
+});
+```
+
+---
+
+### createStation
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN role required)
+
+Create a new station option.
+
+<ParamField path="name" type="string" required>
+  Station name/type (minimum 1 character)
+</ParamField>
+
+<ParamField path="option" type="string" required>
+  Station option (minimum 1 character)
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.scanner.createStation.mutate({
+  name: "food",
+  option: "Dinner"
+});
+```
+
+---
+
+### updateStation
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN role required)
+
+Update a station option.
+
+<ParamField path="id" type="string" required>
+  Station ID
+</ParamField>
+
+<ParamField path="option" type="string" required>
+  New option value (minimum 1 character)
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.scanner.updateStation.mutate({
+  id: "station123",
+  option: "Lunch"
+});
+```
+
+---
+
+### deleteStation
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN role required)
+
+Delete a station.
+
+<ParamField path="id" type="string" required>
+  Station ID
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.scanner.deleteStation.mutate({ id: "station123" });
+```
+
+---
+
+### searchUsers
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN, GENERAL_SCANNER, FOOD_MANAGER, or EVENT_MANAGER role required)
+
+Search for users by name, email, or application name.
+
+<ParamField path="query" type="string" required>
+  Search query (minimum 1 character)
+</ParamField>
+
+<ResponseField name="id" type="string">
+  User ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  User name
+</ResponseField>
+
+<ResponseField name="email" type="string" optional>
+  User email
+</ResponseField>
+
+<ResponseField name="firstName" type="string" optional>
+  First name from application
+</ResponseField>
+
+<ResponseField name="lastName" type="string" optional>
+  Last name from application
+</ResponseField>
+
+**Example:**
+```typescript
+const users = await trpc.scanner.searchUsers.useQuery({
+  query: "john"
+});
+```
+
+---
+
+### scan
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN, GENERAL_SCANNER, FOOD_MANAGER, or EVENT_MANAGER role required)
+
+Scan a user's QR code at a station.
+
+<ParamField path="id" type="string" required>
+  User ID from QR code
+</ParamField>
+
+<ParamField path="stationId" type="string" required>
+  Station ID (or special values: "checkIn", "judges", "sleepingBagBorrow", "sleepingBagReturn")
+</ParamField>
+
+<ResponseField name="id" type="string">
+  User ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  User name
+</ResponseField>
+
+<ResponseField name="email" type="string" optional>
+  User email
+</ResponseField>
+
+<ResponseField name="image" type="string" optional>
+  User profile image
+</ResponseField>
+
+<ResponseField name="metadata" type="string">
+  Additional metadata (e.g., T-shirt size for check-in, dietary restrictions for food)
+</ResponseField>
+
+**Special Station Behaviors:**
+
+- **checkIn**: Updates user status to CHECKED_IN, returns T-shirt size
+- **judges**: Adds JUDGE role to user (ADMIN only)
+- **sleepingBagBorrow**: Records sleeping bag checkout
+- **sleepingBagReturn**: Records sleeping bag return
+- **food stations**: Returns dietary restrictions
+- **event stations**: Records event attendance
+
+**Example:**
+```typescript
+const result = await trpc.scanner.scan.mutate({
+  id: "user123",
+  stationId: "checkIn"
+});
+// Returns: { id: "user123", name: "John Doe", metadata: "T-Shirt Size: L" }
+```

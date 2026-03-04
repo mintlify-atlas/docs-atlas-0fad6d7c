@@ -1,0 +1,642 @@
+---
+title: tRPC API
+description: tRPC API reference and usage guide for the DeltaHacks Portal
+---
+
+## Overview
+
+[tRPC](https://trpc.io/) provides end-to-end typesafe APIs for the DeltaHacks Portal. It eliminates the need for API contracts or code generation by leveraging TypeScript's type inference.
+
+## Why tRPC?
+
+**Benefits:**
+- **Full type safety** - Types flow from server to client automatically
+- **No code generation** - Uses TypeScript's type inference
+- **Autocompletion** - Full IDE support for API calls
+- **Runtime validation** - Zod schemas validate inputs
+- **Small bundle size** - No heavy dependencies
+- **Easy refactoring** - Rename procedures safely across codebase
+
+## Router Structure
+
+All tRPC routers are located in `src/server/router/`.
+
+### App Router
+
+The main router combines all sub-routers:
+
+```typescript:src/server/router/index.ts
+import { applicationRouter } from "./application";
+import { reviewerRouter } from "./reviewers";
+import { userRouter } from "./users";
+import { adminRouter } from "./admin";
+import { fileUploadRouter } from "./file";
+import {
+  tableRouter,
+  trackRouter,
+  projectRouter,
+  judgingRouter,
+  timeSlotRouter,
+} from "./judging";
+import { scannerRouter } from "./scanner";
+import { equipmentRouter } from "./equipment";
+import { router } from "./trpc";
+
+export const appRouter = router({
+  application: applicationRouter,
+  reviewer: reviewerRouter,
+  user: userRouter,
+  admin: adminRouter,
+  file: fileUploadRouter,
+  table: tableRouter,
+  track: trackRouter,
+  project: projectRouter,
+  judging: judgingRouter,
+  timeSlot: timeSlotRouter,
+  scanner: scannerRouter,
+  equipment: equipmentRouter,
+});
+
+export type AppRouter = typeof appRouter;
+```
+
+### Available Routers
+
+<AccordionGroup>
+  <Accordion title="application - Hacker Applications" icon="file-lines">
+    Handles application submission, status checks, RSVP, and application data retrieval.
+    
+    **Key Procedures:**
+    - `getStatusCount` - Get application status statistics (ADMIN/REVIEWER only)
+    - `status` - Get current user's application status
+    - `qr` - Get user's QR code
+    - `rsvp` - Submit RSVP and dietary restrictions
+    - `submit` - Submit new application
+    - `get` - Get current user's application
+    - `getAll` - Get all applications (ADMIN/REVIEWER only)
+  </Accordion>
+
+  <Accordion title="reviewer - Application Reviews" icon="star">
+    Manages application review workflows for reviewers.
+    
+    **Key Procedures:**
+    - `getNext` - Get next application to review
+    - `submitReview` - Submit review score and comment
+    - `getReviewStats` - Get reviewer statistics
+    - `getAllReviews` - Get all reviews for an application
+  </Accordion>
+
+  <Accordion title="user - User Management" icon="user">
+    User profile and account operations.
+    
+    **Key Procedures:**
+    - `getProfile` - Get current user profile
+    - `updateProfile` - Update user information
+    - `getRoles` - Get user roles
+  </Accordion>
+
+  <Accordion title="admin - Administration" icon="shield">
+    Admin-only operations for managing users and applications.
+    
+    **Key Procedures:**
+    - `updateApplicationStatus` - Change application status
+    - `assignRole` - Add/remove user roles
+    - `getUserStats` - Get platform statistics
+    - `exportApplications` - Export applications as CSV
+  </Accordion>
+
+  <Accordion title="file - File Uploads" icon="upload">
+    Resume uploads to Cloudflare R2.
+    
+    **Key Procedures:**
+    - `getUploadUrl` - Get presigned upload URL
+    - `confirmUpload` - Confirm file upload completion
+  </Accordion>
+
+  <Accordion title="judging - Project Judging" icon="gavel">
+    Judging system for hackathon projects.
+    
+    **Key Procedures:**
+    - `submitProject` - Submit a project
+    - `getProject` - Get project details
+    - `submitJudgingResult` - Submit judging scores
+    - `getRubric` - Get rubric questions for a track
+  </Accordion>
+
+  <Accordion title="table - Judging Tables" icon="table">
+    Manage physical judging tables.
+    
+    **Key Procedures:**
+    - `create` - Create new table
+    - `getAll` - List all tables
+    - `assign` - Assign table to track
+  </Accordion>
+
+  <Accordion title="track - Project Tracks" icon="tags">
+    Manage project categories/themes.
+    
+    **Key Procedures:**
+    - `create` - Create new track
+    - `getAll` - List all tracks
+    - `addRubricQuestion` - Add rubric question to track
+  </Accordion>
+
+  <Accordion title="project - Project Management" icon="code">
+    Manage hackathon project submissions.
+    
+    **Key Procedures:**
+    - `create` - Create project
+    - `update` - Update project details
+    - `getAll` - List all projects
+    - `assignTrack` - Assign project to track
+  </Accordion>
+
+  <Accordion title="timeSlot - Judging Schedule" icon="calendar">
+    Schedule projects at tables.
+    
+    **Key Procedures:**
+    - `create` - Create time slot
+    - `getSchedule` - Get full judging schedule
+    - `getByTable` - Get schedule for specific table
+  </Accordion>
+
+  <Accordion title="scanner - QR Code Scanner" icon="qrcode">
+    Event check-ins and meal tracking.
+    
+    **Key Procedures:**
+    - `checkIn` - Check in user to event
+    - `serveMeal` - Record meal served
+    - `getUserInfo` - Get user info from QR code
+  </Accordion>
+
+  <Accordion title="equipment - Equipment Tracking" icon="toolbox">
+    Hardware and sleeping bag checkout.
+    
+    **Key Procedures:**
+    - `checkOut` - Check out equipment
+    - `returnEquipment` - Return equipment
+    - `getHistory` - Get equipment history
+    - `getCurrentCheckouts` - Get active checkouts
+  </Accordion>
+</AccordionGroup>
+
+## tRPC Configuration
+
+The tRPC instance is configured in `src/server/router/trpc.ts`:
+
+```typescript:src/server/router/trpc.ts
+import { TRPCError, initTRPC } from "@trpc/server";
+import SuperJSON from "superjson";
+import { createContext } from "./context";
+
+const t = initTRPC.context<typeof createContext>().create({
+  transformer: SuperJSON,
+});
+
+export const router = t.router;
+export const publicProcedure = t.procedure;
+
+export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
+  if (!ctx.session || !ctx.session.user) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      session: { ...ctx.session, user: ctx.session.user },
+    },
+  });
+});
+```
+
+**Key Features:**
+- **SuperJSON** - Serializes Date, Map, Set, undefined, and more
+- **Context** - Includes session, Prisma client, LogSnag, PostHog
+- **Public Procedure** - No authentication required
+- **Protected Procedure** - Requires authenticated session
+
+## Context
+
+The tRPC context provides shared resources to all procedures:
+
+```typescript:src/server/router/context.ts
+import { Session } from "next-auth";
+import { getServerAuthSession } from "../common/get-server-auth-session";
+import { prisma } from "../db/client";
+import { LogSnag } from "@logsnag/node";
+import { PostHog } from "posthog-node";
+
+export const createContext = async (opts: trpcNext.CreateNextContextOptions) => {
+  const { req, res } = opts;
+  const session = await getServerAuthSession({ req, res });
+
+  return {
+    session,
+    prisma,
+    logsnag,
+    posthog,
+  };
+};
+```
+
+**Context Properties:**
+- `session` - NextAuth session (or null)
+- `prisma` - Prisma database client
+- `logsnag` - Event logging service
+- `posthog` - Analytics service
+
+## Creating Procedures
+
+### Public Procedure
+
+No authentication required:
+
+```typescript
+export const exampleRouter = router({
+  hello: publicProcedure
+    .input(z.object({ name: z.string() }))
+    .query(({ input }) => {
+      return { greeting: `Hello ${input.name}!` };
+    }),
+});
+```
+
+### Protected Procedure
+
+Requires authenticated user:
+
+```typescript
+export const applicationRouter = router({
+  status: protectedProcedure
+    .output(z.enum(Status))
+    .query(async ({ ctx }) => {
+      // ctx.session.user is guaranteed to exist
+      const user = await ctx.prisma.user.findFirst({
+        where: { id: ctx.session.user.id },
+        include: { DH12Application: true },
+      });
+      
+      if (!user?.DH12Application) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+      
+      return user.DH12Application.status;
+    }),
+});
+```
+
+### Role-Based Authorization
+
+Check user roles within procedures:
+
+```typescript
+export const adminRouter = router({
+  getStats: protectedProcedure
+    .query(async ({ ctx }) => {
+      // Check if user has ADMIN role
+      if (!ctx.session.user.role.includes(Role.ADMIN)) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
+      
+      // Admin-only logic
+      const stats = await ctx.prisma.user.count();
+      return { totalUsers: stats };
+    }),
+});
+```
+
+### Input Validation with Zod
+
+Define input schemas for type safety and runtime validation:
+
+```typescript
+import { z } from "zod";
+
+export const applicationRouter = router({
+  submit: protectedProcedure
+    .input(z.object({
+      firstName: z.string().min(1),
+      lastName: z.string().min(1),
+      email: z.string().email(),
+      birthday: z.date(),
+      phone: z.string().optional(),
+      longAnswerWhy: z.string().min(50).max(500),
+      tshirtSize: z.enum(["XS", "S", "M", "L", "XL", "XXL"]),
+      agreeToMLHCodeOfConduct: z.boolean().refine(val => val === true),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // Input is validated and typed
+      await ctx.prisma.dH12Application.create({
+        data: {
+          ...input,
+          User: { connect: { id: ctx.session.user.id } },
+          status: Status.IN_REVIEW,
+        },
+      });
+    }),
+});
+```
+
+### Mutations vs Queries
+
+**Query** - Read operations, no side effects:
+```typescript
+.query(async ({ ctx, input }) => {
+  return await ctx.prisma.user.findMany();
+})
+```
+
+**Mutation** - Write operations, has side effects:
+```typescript
+.mutation(async ({ ctx, input }) => {
+  return await ctx.prisma.user.update({
+    where: { id: input.id },
+    data: { name: input.name },
+  });
+})
+```
+
+## Client Usage
+
+### Setup
+
+The tRPC client is configured in `src/utils/trpc.ts` (or similar):
+
+```typescript
+import { createTRPCNext } from "@trpc/next";
+import { httpBatchLink } from "@trpc/client";
+import { AppRouter } from "../server/router";
+import superjson from "superjson";
+
+export const trpc = createTRPCNext<AppRouter>({
+  config() {
+    return {
+      transformer: superjson,
+      links: [
+        httpBatchLink({
+          url: "/api/trpc",
+        }),
+      ],
+    };
+  },
+  ssr: false,
+});
+```
+
+### React Hooks
+
+**useQuery** - Fetch data:
+
+```tsx
+import { trpc } from "../utils/trpc";
+
+function ApplicationStatus() {
+  const { data: status, isLoading, error } = trpc.application.status.useQuery();
+  
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+  
+  return <div>Status: {status}</div>;
+}
+```
+
+**useMutation** - Submit data:
+
+```tsx
+import { trpc } from "../utils/trpc";
+
+function RsvpForm() {
+  const utils = trpc.useContext();
+  
+  const rsvpMutation = trpc.application.rsvp.useMutation({
+    onSuccess: () => {
+      // Invalidate and refetch
+      utils.application.status.invalidate();
+    },
+  });
+  
+  const handleSubmit = (data: { rsvpCheck: boolean; dietaryRestrictions?: string }) => {
+    rsvpMutation.mutate(data);
+  };
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      {/* Form fields */}
+    </form>
+  );
+}
+```
+
+**Dependent Queries:**
+
+```tsx
+function UserProfile() {
+  const { data: user } = trpc.user.getProfile.useQuery();
+  
+  // Only fetch application if user is loaded
+  const { data: application } = trpc.application.get.useQuery(
+    undefined,
+    { enabled: !!user }
+  );
+}
+```
+
+### Optimistic Updates
+
+```tsx
+const updateMutation = trpc.application.rsvp.useMutation({
+  onMutate: async (newData) => {
+    // Cancel outgoing refetches
+    await utils.application.status.cancel();
+    
+    // Snapshot the previous value
+    const previousStatus = utils.application.status.getData();
+    
+    // Optimistically update to the new value
+    utils.application.status.setData(undefined, "RSVP");
+    
+    // Return context with snapshot
+    return { previousStatus };
+  },
+  onError: (err, newData, context) => {
+    // Roll back on error
+    utils.application.status.setData(undefined, context?.previousStatus);
+  },
+  onSettled: () => {
+    // Refetch after error or success
+    utils.application.status.invalidate();
+  },
+});
+```
+
+## Error Handling
+
+### Server-Side Errors
+
+```typescript
+import { TRPCError } from "@trpc/server";
+
+export const exampleRouter = router({
+  delete: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const item = await ctx.prisma.item.findUnique({
+        where: { id: input.id },
+      });
+      
+      if (!item) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Item not found",
+        });
+      }
+      
+      if (item.userId !== ctx.session.user.id) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You don't own this item",
+        });
+      }
+      
+      return await ctx.prisma.item.delete({ where: { id: input.id } });
+    }),
+});
+```
+
+**Error Codes:**
+- `BAD_REQUEST` - Invalid input
+- `UNAUTHORIZED` - Not authenticated
+- `FORBIDDEN` - Authenticated but not authorized
+- `NOT_FOUND` - Resource doesn't exist
+- `INTERNAL_SERVER_ERROR` - Server error
+
+### Client-Side Error Handling
+
+```tsx
+const { data, error } = trpc.application.submit.useMutation();
+
+if (error) {
+  if (error.data?.code === "UNAUTHORIZED") {
+    // Redirect to login
+  } else if (error.data?.code === "BAD_REQUEST") {
+    // Show validation errors
+  } else {
+    // Generic error message
+  }
+}
+```
+
+## Advanced Patterns
+
+### Middleware
+
+Create custom middleware for common logic:
+
+```typescript
+const isAdmin = t.middleware(({ ctx, next }) => {
+  if (!ctx.session?.user || !ctx.session.user.role.includes(Role.ADMIN)) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+  return next({ ctx });
+});
+
+const adminProcedure = t.procedure.use(isAdmin);
+
+export const adminRouter = router({
+  deleteUser: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // User is guaranteed to be admin
+    }),
+});
+```
+
+### Batching
+
+tRPC automatically batches requests made in the same render cycle:
+
+```tsx
+// These three queries will be batched into a single HTTP request
+const user = trpc.user.getProfile.useQuery();
+const application = trpc.application.get.useQuery();
+const status = trpc.application.status.useQuery();
+```
+
+### Server-Side Usage
+
+Call tRPC procedures from server components or API routes:
+
+```typescript
+import { createContext } from "../server/router/context";
+import { appRouter } from "../server/router";
+
+export async function getServerSideProps(context) {
+  const ctx = await createContext(context);
+  const caller = appRouter.createCaller(ctx);
+  
+  const applications = await caller.application.getAll();
+  
+  return {
+    props: { applications },
+  };
+}
+```
+
+## Testing
+
+### Unit Testing Procedures
+
+```typescript
+import { createContextInner } from "../server/router/context";
+import { appRouter } from "../server/router";
+
+test("application.status returns correct status", async () => {
+  const ctx = await createContextInner({
+    session: {
+      user: { id: "test-user-id", role: [Role.HACKER] },
+      expires: "2099-01-01",
+    },
+  });
+  
+  const caller = appRouter.createCaller(ctx);
+  const status = await caller.application.status();
+  
+  expect(status).toBe("IN_REVIEW");
+});
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Input Validation" icon="shield-check">
+    Always define Zod schemas for inputs to ensure type safety and runtime validation.
+  </Card>
+  
+  <Card title="Handle Errors Gracefully" icon="triangle-exclamation">
+    Throw appropriate TRPCError codes and handle them properly on the client.
+  </Card>
+  
+  <Card title="Leverage Type Safety" icon="code">
+    Let TypeScript infer types from your schemas - avoid manual type definitions.
+  </Card>
+  
+  <Card title="Use Queries for Reads" icon="book-open">
+    Queries are cached and refetched automatically. Use mutations only for writes.
+  </Card>
+  
+  <Card title="Implement Role Checks" icon="user-shield">
+    Always verify user roles for protected operations.
+  </Card>
+  
+  <Card title="Invalidate Queries" icon="rotate">
+    After mutations, invalidate related queries to keep data fresh.
+  </Card>
+</CardGroup>
+
+## See Also
+
+- [Architecture Overview](/development/architecture) - System architecture
+- [Database Schema](/development/database-schema) - Prisma models
+- [Authentication](/development/authentication) - Auth system
+- [tRPC Documentation](https://trpc.io/docs) - Official tRPC docs

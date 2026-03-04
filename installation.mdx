@@ -1,0 +1,562 @@
+---
+title: Installation
+description: Set up DeltaHacks Portal for local development
+---
+
+# Developer Installation Guide
+
+This guide will walk you through setting up DeltaHacks Portal for local development. Whether you're contributing to the project or customizing it for your own hackathon, follow these steps to get a complete development environment running.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed on your system:
+
+<CardGroup cols={2}>
+  <Card title="Node.js" icon="node">
+    **Version 18 or higher**
+    
+    Download from [nodejs.org](https://nodejs.org/)
+  </Card>
+  
+  <Card title="pnpm" icon="box">
+    **Package Manager**
+    
+    Install with: `npm install -g pnpm`
+  </Card>
+  
+  <Card title="Git" icon="git">
+    **Version Control**
+    
+    Download from [git-scm.com](https://git-scm.com/)
+  </Card>
+  
+  <Card title="Docker" icon="docker">
+    **Container Runtime**
+    
+    Required for local database
+  </Card>
+</CardGroup>
+
+### Recommended: Docker Desktop Alternative
+
+For macOS developers, we recommend **[OrbStack](https://orbstack.dev/)** as a fast, lightweight alternative to Docker Desktop. It's optimized for macOS and provides better performance.
+
+Alternatively, you can use:
+- [Docker Desktop](https://docs.docker.com/desktop/) (all platforms)
+- [Podman Desktop](https://podman.io/getting-started/installation) (Linux/macOS)
+
+### Development Tools
+
+We recommend using **[VSCode](https://code.visualstudio.com/)** with these extensions:
+
+- [Tailwind CSS IntelliSense](https://marketplace.visualstudio.com/items?itemName=bradlc.vscode-tailwindcss) - Autocomplete for Tailwind classes
+- [Prettier - Code formatter](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) - Automatic code formatting
+- [Prisma](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) - Prisma schema support
+- [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) - Code linting
+
+## Installation Steps
+
+<Steps>
+  <Step title="Clone the Repository">
+    Clone the DeltaHacks Portal repository to your local machine:
+    
+    ```bash
+    git clone https://github.com/deltahacks/portal.git
+    cd portal
+    ```
+    
+    This will create a `portal` directory with the complete source code.
+  </Step>
+
+  <Step title="Install Dependencies">
+    Install all required npm packages using pnpm:
+    
+    <CodeGroup>
+      ```bash pnpm (Recommended)
+      pnpm install
+      ```
+      
+      ```bash npm
+      npm install
+      ```
+    </CodeGroup>
+    
+    This will install all dependencies defined in `package.json`, including:
+    - Next.js and React
+    - Prisma and database tools
+    - tRPC for API routes
+    - NextAuth.js for authentication
+    - TailwindCSS for styling
+    - And many other packages
+    
+    <Note>
+      The project uses pnpm as the primary package manager. While npm will work, pnpm is recommended for consistency with the development team.
+    </Note>
+  </Step>
+
+  <Step title="Set Up Environment Variables">
+    Create your local environment configuration:
+    
+    ```bash
+    cp .env.example .env
+    ```
+    
+    Edit the `.env` file and configure the required variables. At minimum, you'll need:
+    
+    ```bash .env
+    # Database (will be set up in next step)
+    DATABASE_URL="postgresql://root@localhost:26257/defaultdb?sslmode=disable"
+    
+    # NextAuth - Generate a random secret
+    NEXTAUTH_SECRET="your-secret-here"  # Use: openssl rand -base64 32
+    NEXTAUTH_URL="http://localhost:3000"
+    NEXT_PUBLIC_URL="http://localhost:3000"
+    
+    # OAuth Providers (optional for local development)
+    # Configure at least one provider for authentication
+    DISCORD_CLIENT_ID="your-discord-client-id"
+    DISCORD_CLIENT_SECRET="your-discord-client-secret"
+    ```
+    
+    <Warning>
+      **Important**: Complete this step before proceeding to database setup. The `setup-db.sh` script requires environment variables from `.env` to work properly.
+    </Warning>
+    
+    ### Generating Your NextAuth Secret
+    
+    ```bash
+    openssl rand -base64 32
+    ```
+    
+    Copy the output and paste it as your `NEXTAUTH_SECRET` value.
+    
+    ### OAuth Provider Setup (Optional)
+    
+    For local development, you can set up OAuth providers:
+    
+    <AccordionGroup>
+      <Accordion title="Discord OAuth Setup">
+        1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
+        2. Create a new application
+        3. Navigate to OAuth2 settings
+        4. Add redirect URL: `http://localhost:3000/api/auth/callback/discord`
+        5. Copy Client ID and Client Secret to your `.env`
+      </Accordion>
+      
+      <Accordion title="Google OAuth Setup">
+        1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+        2. Create a new project
+        3. Enable Google+ API
+        4. Create OAuth 2.0 credentials
+        5. Add authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
+        6. Copy Client ID and Client Secret to your `.env`
+      </Accordion>
+      
+      <Accordion title="GitHub OAuth Setup">
+        1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+        2. Create a new OAuth App
+        3. Set Homepage URL: `http://localhost:3000`
+        4. Set Authorization callback URL: `http://localhost:3000/api/auth/callback/github`
+        5. Copy Client ID and Client Secret to your `.env`
+      </Accordion>
+    </AccordionGroup>
+  </Step>
+
+  <Step title="Set Up Local Database">
+    Run the automated database setup script:
+    
+    ```bash
+    ./setup-db.sh
+    ```
+    
+    This script will:
+    - Check for Docker or Podman installation
+    - Verify that port 26257 is available
+    - Create a CockroachDB container named `deltahacks-cockroach`
+    - Start the database on port 26257
+    - Provide a web UI on port 8080
+    
+    ### What the script does
+    
+    The `setup-db.sh` script automates the setup of a local CockroachDB instance:
+    
+    ```bash
+    # Checks for Docker/Podman
+    # Creates container if it doesn't exist
+    # Starts existing container if already created
+    docker run -d \
+      --name deltahacks-cockroach \
+      -p 26257:26257 \
+      -p 8080:8080 \
+      cockroachdb/cockroach:latest start-single-node --insecure
+    ```
+    
+    <Note>
+      The database runs in insecure mode for local development. Never use this configuration in production!
+    </Note>
+    
+    ### Accessing the Database UI
+    
+    Once running, you can access the CockroachDB admin UI at:
+    - **Web UI**: http://localhost:8080
+    - **SQL Port**: localhost:26257
+    
+    ### Troubleshooting
+    
+    **Port already in use:**
+    ```bash
+    # Check what's using port 26257
+    lsof -i :26257
+    
+    # Stop the process or change the port in your DATABASE_URL
+    ```
+    
+    **Docker not running:**
+    ```bash
+    # Start Docker Desktop or OrbStack
+    # Then run the script again
+    ./setup-db.sh
+    ```
+  </Step>
+
+  <Step title="Initialize Database Schema">
+    Generate the Prisma Client and push the schema to your database:
+    
+    <CodeGroup>
+      ```bash pnpm
+      # Generate Prisma Client with TypeScript types
+      pnpm db:generate
+      
+      # Push schema to database (creates tables)
+      pnpm db:push
+      ```
+      
+      ```bash npm
+      # Generate Prisma Client with TypeScript types
+      npm run db:generate
+      
+      # Push schema to database (creates tables)
+      npm run db:push
+      ```
+    </CodeGroup>
+    
+    This will:
+    1. Generate the Prisma Client based on `prisma/schema.prisma`
+    2. Create all database tables and relationships
+    3. Set up indexes and constraints
+    
+    ### Alternative: Using Migrations
+    
+    For production or when working with existing databases, use migrations instead:
+    
+    <CodeGroup>
+      ```bash pnpm
+      # Create a new migration
+      pnpm prisma migrate dev --name your_migration_name
+      
+      # Deploy migrations to production
+      pnpm db:migrate
+      ```
+      
+      ```bash npm
+      # Create a new migration
+      npx prisma migrate dev --name your_migration_name
+      
+      # Deploy migrations to production  
+      npm run db:migrate
+      ```
+    </CodeGroup>
+    
+    <Tip>
+      Use **Prisma Studio** to visually inspect and edit your database:
+      ```bash
+      pnpm db:studio  # Opens at http://localhost:5555
+      ```
+    </Tip>
+  </Step>
+
+  <Step title="Start Development Server">
+    Launch the Next.js development server:
+    
+    <CodeGroup>
+      ```bash pnpm
+      pnpm dev
+      ```
+      
+      ```bash npm
+      npm run dev
+      ```
+    </CodeGroup>
+    
+    The development server will:
+    - Install any missing dependencies
+    - Generate Prisma Client (if not already generated)
+    - Start Next.js in development mode
+    - Enable hot module replacement
+    - Watch for file changes
+    
+    Your application will be available at:
+    - **App**: http://localhost:3000
+    - **API**: http://localhost:3000/api
+    
+    <Note>
+      The `pnpm dev` command runs: `pnpm i && prisma generate && next dev`
+      
+      This ensures dependencies and Prisma Client are always up to date.
+    </Note>
+  </Step>
+
+  <Step title="Verify Installation">
+    Open your browser and navigate to http://localhost:3000
+    
+    You should see the DeltaHacks Portal homepage. Try:
+    
+    1. **Sign in** with one of your configured OAuth providers
+    2. **Create your first user** (will have HACKER role by default)
+    3. **Explore the interface** and features
+    
+    ### First-Time Setup
+    
+    To give yourself admin privileges:
+    
+    1. Sign in and note your user ID
+    2. Open Prisma Studio:
+       ```bash
+       pnpm db:studio
+       ```
+    3. Navigate to the `User` model
+    4. Find your user and edit the `role` field
+    5. Add `ADMIN` to the roles array
+    6. Save changes and refresh your browser
+  </Step>
+</Steps>
+
+## Development Commands
+
+Here's a comprehensive list of available commands:
+
+### Server Commands
+
+<CodeGroup>
+  ```bash pnpm
+  pnpm dev              # Start development server with hot reload
+  pnpm build            # Build optimized production bundle
+  pnpm start            # Start production server (run build first)
+  ```
+  
+  ```bash npm
+  npm run dev           # Start development server with hot reload
+  npm run build         # Build optimized production bundle  
+  npm start             # Start production server (run build first)
+  ```
+</CodeGroup>
+
+### Database Commands
+
+<CodeGroup>
+  ```bash pnpm
+  pnpm db:generate      # Generate Prisma Client
+  pnpm db:push          # Push schema changes to database
+  pnpm db:migrate       # Deploy migrations
+  pnpm db:studio        # Open Prisma Studio (database GUI)
+  ```
+  
+  ```bash npm
+  npm run db:generate   # Generate Prisma Client
+  npm run db:push       # Push schema changes to database
+  npm run db:migrate    # Deploy migrations
+  npm run db:studio     # Open Prisma Studio (database GUI)
+  ```
+</CodeGroup>
+
+### Code Quality Commands
+
+<CodeGroup>
+  ```bash pnpm
+  pnpm lint             # Run ESLint to check for issues
+  pnpm format           # Format code with Prettier
+  pnpm format:check     # Check if code is formatted correctly
+  ```
+  
+  ```bash npm
+  npm run lint          # Run ESLint to check for issues
+  npm run format        # Format code with Prettier
+  npm run format:check  # Check if code is formatted correctly
+  ```
+</CodeGroup>
+
+## Project Structure
+
+Understanding the codebase structure will help you navigate and contribute effectively:
+
+```
+portal/
+├── prisma/
+│   ├── schema.prisma          # Database schema definition
+│   └── migrations/            # Database migrations
+├── public/                    # Static assets
+├── src/
+│   ├── app/                   # Next.js App Router
+│   │   └── api/               # API routes (REST endpoints)
+│   ├── assets/                # Static assets (passes, images)
+│   ├── components/            # Reusable React components
+│   ├── data/                  # Static data and constants
+│   ├── env/                   # Environment variable schemas
+│   ├── pages/                 # Next.js pages (legacy structure)
+│   ├── schemas/               # Zod validation schemas
+│   ├── server/                # Server-side code
+│   │   ├── db/                # Database client
+│   │   └── trpc/              # tRPC configuration
+│   │       └── router/        # tRPC API routers
+│   ├── styles/                # Global styles and CSS
+│   ├── types/                 # TypeScript type definitions
+│   └── utils/                 # Utility functions
+├── .env.example               # Environment variables template
+├── setup-db.sh                # Database setup script
+├── package.json               # Dependencies and scripts
+└── tsconfig.json              # TypeScript configuration
+```
+
+### Key Directories
+
+<AccordionGroup>
+  <Accordion title="src/server/trpc/router/">
+    Contains all tRPC API routers that define the backend logic:
+    - `application.ts` - Hacker application management
+    - `auth.ts` - Authentication logic
+    - `admin.ts` - Admin operations
+    - `judging.ts` - Judging system
+    - `equipment.ts` - Equipment tracking
+    - And more...
+  </Accordion>
+  
+  <Accordion title="src/components/">
+    Reusable React components organized by feature:
+    - Form components
+    - Layout components  
+    - Dashboard components
+    - QR code scanners
+    - Admin tools
+  </Accordion>
+  
+  <Accordion title="src/schemas/">
+    Zod schemas for input validation:
+    - Ensures type safety
+    - Validates user input
+    - Shared between client and server
+  </Accordion>
+  
+  <Accordion title="prisma/">
+    Database-related files:
+    - `schema.prisma` - Database models and relationships
+    - `migrations/` - Version-controlled schema changes
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Contributing Guide" icon="code-pull-request" href="/development/contributing">
+    Learn how to contribute to the project
+  </Card>
+  <Card title="Architecture Overview" icon="sitemap" href="/development/architecture">
+    Understand the system design and data flow
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/application">
+    Explore available tRPC endpoints
+  </Card>
+  <Card title="Database Schema" icon="database" href="/development/database-schema">
+    Detailed documentation of data models
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="Port 3000 already in use">
+    Another application is using port 3000. Either:
+    
+    **Option 1: Stop the other application**
+    ```bash
+    lsof -ti:3000 | xargs kill -9
+    ```
+    
+    **Option 2: Use a different port**
+    ```bash
+    PORT=3001 pnpm dev
+    ```
+  </Accordion>
+  
+  <Accordion title="Database connection error">
+    Ensure your database container is running:
+    
+    ```bash
+    # Check if container is running
+    docker ps | grep deltahacks-cockroach
+    
+    # Start the container if stopped
+    docker start deltahacks-cockroach
+    
+    # Or run the setup script again
+    ./setup-db.sh
+    ```
+  </Accordion>
+  
+  <Accordion title="Prisma Client not generated">
+    If you see "@prisma/client did not initialize yet", run:
+    
+    ```bash
+    pnpm db:generate
+    ```
+  </Accordion>
+  
+  <Accordion title="OAuth authentication failing">
+    1. Verify your OAuth credentials in `.env`
+    2. Check that redirect URLs match in provider settings
+    3. Ensure `NEXTAUTH_URL` matches your local URL
+    4. Clear browser cookies and try again
+  </Accordion>
+  
+  <Accordion title="TypeScript errors after pulling changes">
+    ```bash
+    # Clean install dependencies
+    rm -rf node_modules pnpm-lock.yaml
+    pnpm install
+    
+    # Regenerate Prisma Client
+    pnpm db:generate
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Development Best Practices
+
+<Note>
+  Before making changes, read through the [Contributing Guide](https://github.com/deltahacks/portal/blob/main/contributing.md) for:
+  - Code style guidelines
+  - Development workflows
+  - Pull request process
+  - Best practices for React, TypeScript, and state management
+</Note>
+
+### Quick Tips
+
+- **Type Safety**: Always use TypeScript, avoid `any` types
+- **Database Changes**: Create migrations for all schema changes
+- **Code Formatting**: Run `pnpm format` before committing
+- **Testing**: Test your changes thoroughly with different user roles
+- **Commits**: Use [conventional commit messages](https://www.conventionalcommits.org/)
+
+## Getting Help
+
+Need assistance?
+
+- **Discord**: Ask in the `#technical-chat` channel
+- **GitHub Issues**: [Open an issue](https://github.com/deltahacks/portal/issues)
+- **Email**: [tech@deltahacks.com](mailto:tech@deltahacks.com)
+
+<Warning>
+  When asking for help, please demonstrate what you've already tried. See the [Technical VP Support Policy](https://github.com/deltahacks/portal/blob/main/contributing.md#technical-vp-support-policy) in the contributing guide.
+</Warning>

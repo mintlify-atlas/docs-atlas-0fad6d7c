@@ -1,0 +1,356 @@
+---
+title: Application Router
+description: API reference for application-related procedures
+---
+
+The Application router handles hackathon application submissions, RSVP management, and application status tracking.
+
+## Procedures
+
+### getStatusCount
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN or REVIEWER role required)
+
+Get application status counts grouped by status.
+
+<ParamField path="No input parameters" />
+
+<ResponseField name="status" type="enum">
+  Application status (IN_REVIEW, ACCEPTED, REJECTED, WAITLISTED, RSVP, CHECKED_IN)
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Number of applications with this status
+</ResponseField>
+
+**Example:**
+```typescript
+const statusCounts = await trpc.application.getStatusCount.useQuery();
+// Returns: [{ status: "IN_REVIEW", count: 45 }, { status: "ACCEPTED", count: 120 }, ...]
+```
+
+---
+
+### status
+
+**Type:** Query  
+**Authentication:** Protected
+
+Get the application status for the current user.
+
+<ParamField path="No input parameters" />
+
+<ResponseField name="status" type="enum">
+  The user's application status
+</ResponseField>
+
+**Example:**
+```typescript
+const myStatus = await trpc.application.status.useQuery();
+// Returns: "ACCEPTED"
+```
+
+---
+
+### qr
+
+**Type:** Query  
+**Authentication:** Protected
+
+Get the QR code for the current user.
+
+<ParamField path="No input parameters" />
+
+<ResponseField name="qrcode" type="string" optional>
+  The user's QR code
+</ResponseField>
+
+**Example:**
+```typescript
+const qrCode = await trpc.application.qr.useQuery();
+```
+
+---
+
+### rsvp
+
+**Type:** Mutation  
+**Authentication:** Protected (user must have ACCEPTED status)
+
+Submit an RSVP for an accepted application.
+
+<ParamField path="rsvpCheck" type="boolean" required>
+  Confirmation of RSVP
+</ParamField>
+
+<ParamField path="dietaryRestrictions" type="string" optional>
+  Dietary restrictions or preferences
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.application.rsvp.mutate({
+  rsvpCheck: true,
+  dietaryRestrictions: "Vegetarian, no nuts"
+});
+```
+
+---
+
+### getPrevAutofill
+
+**Type:** Query  
+**Authentication:** Protected
+
+Get previous application data for autofill (from DH11 or DH10 applications).
+
+<ParamField path="No input parameters" />
+
+<ResponseField name="firstName" type="string" optional>
+  First name from previous application
+</ResponseField>
+
+<ResponseField name="lastName" type="string" optional>
+  Last name from previous application
+</ResponseField>
+
+<ResponseField name="birthday" type="date" optional>
+  Birthday from previous application
+</ResponseField>
+
+<ResponseField name="studyEnrolledPostSecondary" type="boolean" optional>
+  Whether enrolled in post-secondary education
+</ResponseField>
+
+<ResponseField name="studyLocation" type="string" optional>
+  School/university name
+</ResponseField>
+
+<ResponseField name="studyDegree" type="string" optional>
+  Degree program
+</ResponseField>
+
+<ResponseField name="studyMajor" type="string" optional>
+  Major/field of study
+</ResponseField>
+
+<ResponseField name="Other fields" type="various" optional>
+  Additional fields from previous applications (interests, workshops, emergency contact, etc.)
+</ResponseField>
+
+**Example:**
+```typescript
+const autofillData = await trpc.application.getPrevAutofill.useQuery();
+```
+
+---
+
+### submitDh12
+
+**Type:** Mutation  
+**Authentication:** Protected
+
+Submit a DeltaHacks 12 application.
+
+<ParamField path="firstName" type="string" required>
+  First name (1-255 characters)
+</ParamField>
+
+<ParamField path="lastName" type="string" required>
+  Last name (1-255 characters)
+</ParamField>
+
+<ParamField path="birthday" type="date" required>
+  Date of birth (must be at least 13 years old)
+</ParamField>
+
+<ParamField path="phone" type="string" optional>
+  Valid mobile phone number
+</ParamField>
+
+<ParamField path="country" type="string" required>
+  Country of residence
+</ParamField>
+
+<ParamField path="studyEnrolledPostSecondary" type="boolean" required>
+  Whether enrolled in post-secondary education
+</ParamField>
+
+<ParamField path="studyLocation" type="string" optional>
+  School/university name
+</ParamField>
+
+<ParamField path="studyDegree" type="string" optional>
+  Degree program
+</ParamField>
+
+<ParamField path="studyMajor" type="string" optional>
+  Major/field of study
+</ParamField>
+
+<ParamField path="studyYearOfStudy" type="string" optional>
+  Current year of study
+</ParamField>
+
+<ParamField path="studyExpectedGraduation" type="date" optional>
+  Expected graduation date
+</ParamField>
+
+<ParamField path="previousHackathonsCount" type="number" required>
+  Number of previous hackathons attended (minimum 0)
+</ParamField>
+
+<ParamField path="longAnswerSocratica" type="string" required>
+  Answer to Socratica question (max 150 words)
+</ParamField>
+
+<ParamField path="longAnswerHobby" type="string" required>
+  Answer to hobby question (max 150 words)
+</ParamField>
+
+<ParamField path="longAnswerWhy" type="string" required>
+  Answer to "why" question (max 150 words)
+</ParamField>
+
+<ParamField path="longAnswerTime" type="string" required>
+  Answer to time question (max 150 words)
+</ParamField>
+
+<ParamField path="longAnswerSkill" type="string" required>
+  Answer to skill question (max 150 words)
+</ParamField>
+
+<ParamField path="socialText" type="string[]" required>
+  Social media links
+</ParamField>
+
+<ParamField path="interests" type="string" optional>
+  Interests (max 150 words)
+</ParamField>
+
+<ParamField path="linkToResume" type="string" optional>
+  Link to resume
+</ParamField>
+
+<ParamField path="tshirtSize" type="enum" required>
+  T-shirt size (XS, S, M, L, XL)
+</ParamField>
+
+<ParamField path="hackerKind" type="string[]" required>
+  Types of hacking interests (at least 1 required)
+</ParamField>
+
+<ParamField path="alreadyHaveTeam" type="boolean" required>
+  Whether the applicant already has a team
+</ParamField>
+
+<ParamField path="workshopChoices" type="string[]" required>
+  Workshop preferences
+</ParamField>
+
+<ParamField path="discoverdFrom" type="string[]" required>
+  How the applicant heard about DeltaHacks (at least 1 required)
+</ParamField>
+
+<ParamField path="considerCoffee" type="boolean" required>
+  Whether to consider coffee chat
+</ParamField>
+
+<ParamField path="dietaryRestrictions" type="string" optional>
+  Dietary restrictions
+</ParamField>
+
+<ParamField path="underrepresented" type="enum" optional>
+  Underrepresented status (YES, NO, UNSURE)
+</ParamField>
+
+<ParamField path="gender" type="string" optional>
+  Gender identity
+</ParamField>
+
+<ParamField path="race" type="string" optional>
+  Race/ethnicity
+</ParamField>
+
+<ParamField path="orientation" type="string" optional>
+  Sexual orientation
+</ParamField>
+
+<ParamField path="emergencyContactName" type="string" required>
+  Emergency contact name
+</ParamField>
+
+<ParamField path="emergencyContactPhone" type="string" required>
+  Emergency contact phone (must be valid)
+</ParamField>
+
+<ParamField path="emergencyContactRelation" type="string" required>
+  Relationship to emergency contact
+</ParamField>
+
+<ParamField path="agreeToMLHCodeOfConduct" type="boolean" required>
+  Must be true
+</ParamField>
+
+<ParamField path="agreeToMLHPrivacyPolicy" type="boolean" required>
+  Must be true
+</ParamField>
+
+<ParamField path="agreeToMLHCommunications" type="boolean" required>
+  MLH communications consent
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.application.submitDh12.mutate({
+  firstName: "John",
+  lastName: "Doe",
+  birthday: new Date("2000-01-01"),
+  country: "Canada",
+  studyEnrolledPostSecondary: true,
+  studyLocation: "McMaster University",
+  // ... other required fields
+});
+```
+
+---
+
+### deleteApplication
+
+**Type:** Mutation  
+**Authentication:** Protected
+
+Delete the current user's DH12 application.
+
+<ParamField path="No input parameters" />
+
+**Example:**
+```typescript
+await trpc.application.deleteApplication.mutate();
+```
+
+---
+
+### getWifiConfig
+
+**Type:** Query  
+**Authentication:** Protected
+
+Get WiFi configuration for the event.
+
+<ParamField path="No input parameters" />
+
+<ResponseField name="name" type="string">
+  WiFi network name
+</ResponseField>
+
+<ResponseField name="password" type="string">
+  WiFi password
+</ResponseField>
+
+**Example:**
+```typescript
+const wifi = await trpc.application.getWifiConfig.useQuery();
+// Returns: { name: "DeltaHacks", password: "secret123" }
+```

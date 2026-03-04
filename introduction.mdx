@@ -1,0 +1,124 @@
+---
+title: Introduction
+description: Welcome to DeltaHacks Portal - A comprehensive hackathon management system built with the T3 stack
+---
+
+# DeltaHacks Portal
+
+DeltaHacks Portal is the official hackathon management system for DeltaHacks, an annual 36-hour hackathon hosted at McMaster University. This platform provides a unified solution for managing all aspects of a hackathon, from hacker applications to judging, check-ins, and equipment tracking.
+
+## What is DeltaHacks Portal?
+
+DeltaHacks Portal is a comprehensive SaaS hackathon management system that consolidates multiple dashboards and tools into a single, unified platform. Instead of maintaining separate systems for hackers, volunteers, judges, and sponsors, DeltaHacks Portal provides a cohesive experience with a single source of truth for all data.
+
+### Philosophy
+
+In the past, the DeltaHacks team used a variety of different tools to manage the hackathon, including creating, updating, and maintaining several dashboards for different user groups. The Portal represents a different approach: a single, unified system that serves all participants while maintaining role-based access control and specialized views for each user type.
+
+## Key Features
+
+DeltaHacks Portal provides comprehensive hackathon management capabilities:
+
+### Authentication & Access Control
+- **OAuth2 Authentication** - Secure sign-in with multiple providers (Discord, Google, GitHub, LinkedIn, Azure AD)
+- **Role-Based Access Control (RBAC)** - Granular permissions for Hackers, Admins, Reviewers, Judges, Food Managers, Event Managers, and Sponsors
+- **NextAuth.js Integration** - Industry-standard authentication with session management
+
+### Application Management
+- **Hacker Applications** - Comprehensive application forms with custom fields
+- **Application Review System** - Multi-reviewer workflow with scoring and comments
+- **Status Tracking** - Full application lifecycle: In Review → Rejected/Waitlisted/Accepted → RSVP → Checked In
+- **Resume Upload** - Integrated file storage with Cloudflare R2
+
+### Event Operations
+- **QR Code Check-in** - Fast attendee check-in with QR code scanning
+- **Meal Ticket Management** - QR-encoded meal tickets with tracking and limits
+- **Event Logging** - Station-based check-in system for workshops and activities
+- **Equipment Tracking** - Check-out system for sleeping bags and hardware items
+
+### Judging System
+- **Project Submissions** - Teams submit projects with descriptions and links
+- **Track-based Judging** - Organize projects by category/topic
+- **Rubric Scoring** - Customizable rubric questions with point values
+- **Judge Assignment** - Assign judges to tables with time slot scheduling
+- **Real-time Results** - Track judging progress and scores
+
+### Admin Dashboard
+- **User Management** - View and manage all registered users
+- **Application Review** - Review, score, and update application statuses
+- **Analytics** - Track registrations, check-ins, and event participation
+- **Configuration** - Customize settings and feature flags
+- **Data Export** - Export data for analysis and reporting
+
+### Additional Features
+- **Apple Wallet Integration** - Generate digital passes for attendees
+- **Email Notifications** - SendGrid integration for automated communications
+- **Analytics Tracking** - PostHog integration for usage analytics
+- **Calendar Integration** - Event scheduling with FullCalendar
+- **Responsive Design** - Mobile-friendly interface with TailwindCSS
+
+## Tech Stack
+
+DeltaHacks Portal follows the **T3 Stack** architecture and axioms:
+
+<CardGroup cols={2}>
+  <Card title="Next.js" icon="react">
+    React framework with App Router for modern web applications
+  </Card>
+  <Card title="TypeScript" icon="code">
+    End-to-end type safety across the entire application
+  </Card>
+  <Card title="Prisma" icon="database">
+    Type-safe database ORM with CockroachDB
+  </Card>
+  <Card title="tRPC" icon="network-wired">
+    End-to-end typesafe APIs without code generation
+  </Card>
+  <Card title="NextAuth.js" icon="lock">
+    Complete authentication solution with OAuth providers
+  </Card>
+  <Card title="TailwindCSS" icon="palette">
+    Utility-first CSS framework for rapid UI development
+  </Card>
+</CardGroup>
+
+### Infrastructure
+
+- **Database**: CockroachDB (PostgreSQL-compatible distributed SQL)
+- **Hosting**: Netlify for serverless deployment
+- **File Storage**: Cloudflare R2 (S3-compatible object storage)
+- **Email**: SendGrid for transactional emails
+- **Analytics**: PostHog for product analytics
+
+## Get Started
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get up and running quickly as an organizer or admin
+  </Card>
+  <Card title="Installation" icon="code" href="/installation">
+    Set up a local development environment
+  </Card>
+  <Card title="Hacker Guide" icon="user" href="/hackers/application">
+    Learn how to apply, RSVP, and participate in the hackathon
+  </Card>
+  <Card title="Organizer Guide" icon="users-gear" href="/organizers/admin-dashboard">
+    Manage applications, judging, and event operations
+  </Card>
+</CardGroup>
+
+## Project History
+
+DeltaHacks Portal is the successor to the [DeltaHacks 'My' Portal](https://github.com/deltahacks/my.Deltahacks) which was in use for three years. The current version represents a complete rewrite with modern technologies and an expanded feature set.
+
+## Support
+
+Need help or have questions?
+
+<Card title="Get In Touch" icon="envelope">
+  Open an issue on GitHub or contact the team at [tech@deltahacks.com](mailto:tech@deltahacks.com)
+</Card>
+
+<Note>
+  DeltaHacks Portal is open source and built by students, for students. Contributions are welcome!
+</Note>

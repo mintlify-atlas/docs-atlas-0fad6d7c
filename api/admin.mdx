@@ -1,0 +1,113 @@
+---
+title: Admin Router
+description: API reference for administrative procedures
+---
+
+The Admin router handles system configuration and administrative settings.
+
+## Procedures
+
+### setKillSwitch
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN role required)
+
+Enable or disable application submissions.
+
+<ParamField path="value" type="boolean" required>
+  True to disable applications, false to enable
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.admin.setKillSwitch.mutate(true); // Disable applications
+```
+
+---
+
+### setDhYear
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN role required)
+
+Set the current DeltaHacks year.
+
+<ParamField path="year" type="string" required>
+  Year in format "DH##" (e.g., "DH12", "DH13")
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.admin.setDhYear.mutate("DH12");
+```
+
+---
+
+### getConfig
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN role required)
+
+Get current system configuration.
+
+<ParamField path="No input parameters" />
+
+<ResponseField name="dhYear" type="string">
+  Current DeltaHacks year (e.g., "DH12")
+</ResponseField>
+
+<ResponseField name="killApplications" type="boolean">
+  Whether applications are disabled
+</ResponseField>
+
+**Example:**
+```typescript
+const config = await trpc.admin.getConfig.useQuery();
+// Returns: { dhYear: "DH12", killApplications: false }
+```
+
+---
+
+### getDhYear
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN role required)
+
+Get the current DeltaHacks year.
+
+<ParamField path="No input parameters" />
+
+<ResponseField name="year" type="string">
+  Current DeltaHacks year
+</ResponseField>
+
+**Example:**
+```typescript
+const year = await trpc.admin.getDhYear.useQuery();
+// Returns: "DH12"
+```
+
+---
+
+### setWifiConfig
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN role required)
+
+Set WiFi configuration for the event.
+
+<ParamField path="name" type="string" required>
+  WiFi network name
+</ParamField>
+
+<ParamField path="password" type="string" required>
+  WiFi password
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.admin.setWifiConfig.mutate({
+  name: "DeltaHacks",
+  password: "hackathon2024"
+});
+```

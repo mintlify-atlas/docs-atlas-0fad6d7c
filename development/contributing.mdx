@@ -1,0 +1,720 @@
+---
+title: Contributing Guide
+description: Development setup, best practices, and contribution guidelines for DeltaHacks Portal
+---
+
+## Welcome
+
+Welcome to the DeltaHacks Portal project! This guide will help you get started as a DeltaHacks technical team member and provide you with the guidelines for contributing to the project.
+
+## Getting Started
+
+As a new DeltaHacks technical team member working on this project:
+
+1. **Clone the repository** to your local machine
+2. **Set up your development environment** (see setup guide below)
+3. **Create a feature branch** for your work
+4. **Make your changes** following our guidelines
+5. **Submit a pull request** when you're ready
+
+## Development Setup
+
+### Prerequisites
+
+<AccordionGroup>
+  <Accordion title="Required Software" icon="download">
+    - **Node.js** (version 18 or higher) - [Download](https://nodejs.org/)
+    - **pnpm** (package manager) - Install: `npm install -g pnpm`
+    - **Git** - [Download](https://git-scm.com/)
+    - **Docker** - Required for local database
+      - **Recommended**: [OrbStack](https://orbstack.dev/) - Fast, lightweight Docker alternative for macOS
+      - Alternative: [Docker Desktop](https://www.docker.com/products/docker-desktop)
+  </Accordion>
+  
+  <Accordion title="Recommended Tools" icon="tools">
+    - **[VSCode](https://code.visualstudio.com/)** - Recommended IDE
+    - **Extensions**:
+      - [Tailwind CSS IntelliSense](https://marketplace.visualstudio.com/items?itemName=bradlc.vscode-tailwindcss)
+      - [Prettier - Code formatter](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
+      - [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)
+      - [Prisma](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma)
+  </Accordion>
+</AccordionGroup>
+
+### Installation Steps
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/deltahacks/portal.git
+    cd portal
+    ```
+  </Step>
+  
+  <Step title="Install dependencies">
+    ```bash
+    pnpm install
+    ```
+  </Step>
+  
+  <Step title="Set up environment variables">
+    ```bash
+    cp .env.example .env
+    ```
+    
+    Fill in the required environment variables in `.env`. 
+    
+    <Warning>
+      Reach out to either of the VPs to receive the environmental variables needed.
+    </Warning>
+  </Step>
+  
+  <Step title="Set up the database">
+    <Warning>
+      **IMPORTANT**: Make sure you've completed Step 3 (environment variables) first!
+      The setup-db.sh script requires environment variables from `.env` to work properly.
+    </Warning>
+    
+    ```bash
+    # Start the database using the provided script
+    ./setup-db.sh
+    
+    # Generate Prisma client and push schema
+    pnpm db:generate
+    pnpm db:push
+    ```
+    
+    The `setup-db.sh` script:
+    - Checks for Docker or Podman installation
+    - Creates a CockroachDB container if it doesn't exist
+    - Starts the database on port 26257
+    - Provides a web UI on port 8080
+  </Step>
+  
+  <Step title="Start the development server">
+    ```bash
+    pnpm dev
+    ```
+    
+    The application should now be running at `http://localhost:3000`.
+  </Step>
+</Steps>
+
+## Project Structure
+
+```
+src/
+├── app/                 # Next.js app directory (API routes)
+├── assets/              # Static assets (pass files, images, etc.)
+├── components/          # Reusable React components
+├── data/               # Static data and constants
+├── env/                # Environment variable schemas
+├── pages/              # Next.js pages (legacy structure)
+├── schemas/            # Zod schemas for validation
+├── server/             # tRPC server-side code
+│   ├── router/         # tRPC routers
+│   ├── common/         # Shared server utilities
+│   ├── db/             # Database-related code
+│   └── trpc/           # tRPC configuration
+│       └── router/     # Nested tRPC router structure
+├── styles/             # Global styles
+├── types/              # TypeScript type definitions
+└── utils/              # Utility functions
+```
+
+## Technology Stack
+
+This project uses the **T3 Stack**:
+
+<CardGroup cols={2}>
+  <Card title="Next.js" icon="react">
+    React framework for the application
+  </Card>
+  
+  <Card title="TypeScript" icon="code">
+    Type safety across the entire stack
+  </Card>
+  
+  <Card title="Prisma" icon="database">
+    Database ORM for CockroachDB
+  </Card>
+  
+  <Card title="tRPC" icon="arrows-left-right">
+    End-to-end typesafe APIs
+  </Card>
+  
+  <Card title="NextAuth.js" icon="lock">
+    Authentication with OAuth
+  </Card>
+  
+  <Card title="TailwindCSS" icon="paintbrush">
+    Utility-first CSS framework
+  </Card>
+</CardGroup>
+
+### Code Organization
+
+1. **Components**: Place reusable components in `src/components/`
+2. **Pages**: Use the app directory for new pages, legacy pages are in `src/pages/`
+3. **API Routes**: Place API routes in `src/app/api/`
+4. **Database**: Use Prisma for all database operations
+5. **Validation**: Use Zod schemas for input validation
+
+## Development Guidelines
+
+### Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Type Safety" icon="shield-check">
+    Always use TypeScript and avoid `any` types
+  </Card>
+  
+  <Card title="Error Handling" icon="triangle-exclamation">
+    Implement proper error handling and user feedback
+  </Card>
+  
+  <Card title="Accessibility" icon="universal-access">
+    Follow WCAG guidelines and use semantic HTML
+  </Card>
+  
+  <Card title="Performance" icon="gauge-high">
+    Optimize for performance and consider bundle size
+  </Card>
+  
+  <Card title="Security" icon="lock">
+    Validate all inputs and follow security best practices
+  </Card>
+  
+  <Card title="Documentation" icon="book">
+    Document complex logic and public APIs
+  </Card>
+</CardGroup>
+
+## Code Style
+
+### TypeScript
+
+- Use strict TypeScript configuration
+- Prefer interfaces over types for object shapes
+- Use proper type annotations
+- Avoid type assertions unless absolutely necessary
+
+```typescript
+// Good
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+function getUser(id: string): Promise<User> {
+  // ...
+}
+
+// Avoid
+function getUser(id: any): any {
+  // ...
+}
+```
+
+### React
+
+- Use functional components with hooks
+- Follow React best practices
+- Use proper prop types and interfaces
+- Implement proper error boundaries
+
+```tsx
+// Good
+interface ButtonProps {
+  onClick: () => void;
+  children: React.ReactNode;
+  disabled?: boolean;
+}
+
+function Button({ onClick, children, disabled = false }: ButtonProps) {
+  return (
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  );
+}
+```
+
+### State Management Best Practices
+
+<Accordion title="Avoid unnecessary useState" icon="triangle-exclamation">
+  Don't use state for values that can be derived from props or other state:
+  
+  ```tsx
+  // ❌ Bad - unnecessary state
+  const [fullName, setFullName] = useState(firstName + " " + lastName);
+  
+  // ✅ Good - derived value
+  const fullName = firstName + " " + lastName;
+  ```
+  
+  Don't use state for values that don't trigger re-renders:
+  
+  ```tsx
+  // ❌ Bad - state for event handler only
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const handleSubmit = () => {
+    setIsSubmitting(true);
+    // ... submit logic
+  };
+  
+  // ✅ Good - use ref or local variable
+  const isSubmittingRef = useRef(false);
+  const handleSubmit = () => {
+    isSubmittingRef.current = true;
+    // ... submit logic
+  };
+  ```
+</Accordion>
+
+<Accordion title="Cache expensive calculations" icon="gauge">
+  ```tsx
+  // ❌ Bad - recalculating on every render
+  const expensiveValue = expensiveCalculation(data);
+  
+  // ✅ Good - memoized calculation
+  const expensiveValue = useMemo(() => {
+    return expensiveCalculation(data);
+  }, [data]);
+  ```
+</Accordion>
+
+<Accordion title="Avoid unnecessary Effects" icon="rotate">
+  ```tsx
+  // ❌ Bad - Effect for derived state
+  const [filteredTodos, setFilteredTodos] = useState([]);
+  useEffect(() => {
+    setFilteredTodos(todos.filter((todo) => !todo.completed));
+  }, [todos]);
+  
+  // ✅ Good - calculate during render
+  const filteredTodos = todos.filter((todo) => !todo.completed);
+  ```
+</Accordion>
+
+**Key principles:**
+- If you can calculate something during render, you don't need an Effect
+- To cache expensive calculations, use `useMemo` instead of `useEffect`
+- Code that runs because a component was displayed should be in Effects
+- Code that runs because a user did something should be in event handlers
+
+For more detailed guidance, see [React: You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect).
+
+### Styling
+
+- Use TailwindCSS for styling
+- Follow the existing design system
+- Use CSS custom properties for theming
+- Ensure responsive design
+
+```tsx
+// Good - Tailwind classes
+<button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+  Click me
+</button>
+
+// Responsive design
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  {/* Content */}
+</div>
+```
+
+### File Naming
+
+- Use **PascalCase** for components: `MyComponent.tsx`
+- Use **camelCase** for utilities: `myUtility.ts`
+- Use **kebab-case** for pages: `my-page.tsx`
+
+## Database Changes
+
+### Making Schema Changes
+
+<Steps>
+  <Step title="Update the schema">
+    Edit `prisma/schema.prisma` with your changes:
+    
+    ```prisma
+    model User {
+      id    String @id @default(cuid())
+      name  String
+      // Add new field
+      phone String?
+    }
+    ```
+  </Step>
+  
+  <Step title="Create a migration">
+    ```bash
+    pnpm prisma migrate dev --name your_migration_name
+    ```
+  </Step>
+  
+  <Step title="Generate the client">
+    ```bash
+    pnpm prisma generate
+    ```
+  </Step>
+  
+  <Step title="Test your changes">
+    Thoroughly test the migration on your local database.
+  </Step>
+  
+  <Step title="Deploy to database">
+    ```bash
+    pnpm db:push
+    ```
+  </Step>
+</Steps>
+
+### Database Guidelines
+
+- Always create migrations for schema changes
+- Test migrations on a copy of production data when possible
+- Document breaking changes in PR description
+- Use proper relationships and constraints
+- Consider migration rollback strategy
+
+## Pull Request Process
+
+### Before Submitting
+
+<Checklist>
+  - [ ] Code follows our style guidelines
+  - [ ] All tests pass locally
+  - [ ] No TypeScript errors
+  - [ ] Code is formatted with Prettier (`pnpm format`)
+  - [ ] No console.log statements (use proper logging)
+  - [ ] Documentation updated if needed
+</Checklist>
+
+### Pull Request Guidelines
+
+1. **Use descriptive titles** and descriptions
+2. **Reference related issues** using keywords (Fixes #123, Closes #456)
+3. **Include screenshots** for UI changes
+4. **Describe the changes** and their impact
+5. **Request reviews** from appropriate team members
+
+### PR Template
+
+```markdown
+## Description
+Brief description of changes
+
+## Type of Change
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Breaking change
+- [ ] Documentation update
+
+## Testing
+How to test these changes
+
+## Screenshots (if applicable)
+Add screenshots here
+
+## Checklist
+- [ ] Code follows style guidelines
+- [ ] Tests pass
+- [ ] Documentation updated
+```
+
+### Commit Messages
+
+Use [conventional commit messages](https://www.conventionalcommits.org/):
+
+```bash
+feat: add new feature
+fix: resolve bug
+docs: update documentation
+style: formatting changes
+refactor: code restructuring
+test: add or update tests
+chore: maintenance tasks
+```
+
+**Examples:**
+```bash
+feat(application): add dietary restrictions field to RSVP
+fix(auth): resolve session expiration issue
+refactor(judging): improve rubric scoring logic
+docs: update contributing guide
+```
+
+## Development Commands
+
+```bash
+# Development
+pnpm dev              # Start development server (includes pnpm i && prisma generate)
+pnpm build            # Build for production
+pnpm start            # Start production server
+
+# Code Quality
+pnpm lint             # Run ESLint
+pnpm format           # Format code with Prettier
+pnpm format:check     # Check code formatting
+
+# Database
+pnpm db:generate      # Generate Prisma client and run migrations
+pnpm db:migrate       # Deploy migrations to production
+pnpm db:push          # Push schema to database
+pnpm db:studio        # Open Prisma Studio
+```
+
+## Testing
+
+### Running Tests
+
+```bash
+# Run all tests
+pnpm test
+
+# Run tests in watch mode
+pnpm test:watch
+
+# Run tests with coverage
+pnpm test:coverage
+```
+
+### Writing Tests
+
+```typescript
+import { describe, it, expect } from 'vitest';
+
+describe('MyComponent', () => {
+  it('renders correctly', () => {
+    // Test implementation
+    expect(true).toBe(true);
+  });
+});
+```
+
+## Getting Help
+
+### Contact Channels
+
+- **Discord**: Ask for help in the `#technical-chat` channel
+- **GitHub**: Comment on pull requests or issues
+- **Email**: [tech@deltahacks.com](mailto:tech@deltahacks.com)
+
+### Technical VP Support Policy
+
+<Warning>
+  **Important**: Coming to the technical VPs without having already put in the effort to resolve an issue is not allowed.
+</Warning>
+
+This follows the [Slack Engineering intern pattern](https://slack.engineering/blocked-how-to-ask-for-help-as-an-intern/) where you must demonstrate your problem-solving process before seeking help.
+
+**The key question to ask yourself is: "Will I learn anything from spending more time on this?"**
+
+### When to Ask for Help Immediately
+
+<AccordionGroup>
+  <Accordion title="Formatting and syntax issues" icon="code">
+    Straightforward technical questions with clear answers.
+    
+    **Example**: "How do I fix this TypeScript error?" or "What's the correct import syntax?"
+  </Accordion>
+  
+  <Accordion title="Which function to call" icon="function">
+    Knowledge-based questions about the codebase.
+    
+    **Example**: "Which tRPC procedure should I use to get user data?" or "Where is the email sending function?"
+  </Accordion>
+  
+  <Accordion title="Environment setup issues" icon="wrench">
+    Problems with local development environment.
+    
+    **Example**: "Docker won't start" or "Database connection failing"
+  </Accordion>
+</AccordionGroup>
+
+### When to Spend More Time First
+
+<AccordionGroup>
+  <Accordion title="How a function works internally" icon="magnifying-glass">
+    Understanding-based questions requiring deeper comprehension.
+    
+    **What to do**: Read the code, add console.logs, step through with debugger
+  </Accordion>
+  
+  <Accordion title="State management issues" icon="diagram-project">
+    How state changes flow through the application.
+    
+    **What to do**: Use React DevTools, trace data flow, read React docs
+  </Accordion>
+  
+  <Accordion title="Logic bugs" icon="bug">
+    Code that runs but produces incorrect results.
+    
+    **What to do**: Debug step-by-step, test edge cases, review logic
+  </Accordion>
+</AccordionGroup>
+
+### Before Reaching Out
+
+You **must**:
+
+1. **Attempt to solve the problem yourself** - Research, debug, try different approaches
+2. **Create a pull request** - Show your attempted solution, even if it doesn't work
+3. **Document your process** - Explain what you tried, why it didn't work, what you learned
+4. **Come prepared** - Bring specific questions about what you've already attempted
+
+### How to Ask for Help Effectively
+
+When you do reach out, include:
+
+```markdown
+## Problem
+Clear description of what you're trying to solve
+
+## What I've Tried
+1. First approach - why it didn't work
+2. Second approach - what happened
+3. Third approach - current state
+
+## What I've Learned
+Insights gained from debugging
+
+## Specific Questions
+- Where exactly am I stuck?
+- What concept am I missing?
+```
+
+**Good Example:**
+> "I'm trying to add email notifications when an application is reviewed. I tried using SendGrid in the tRPC mutation, but emails aren't sending. I checked: (1) API key is set, (2) email template exists, (3) no errors in logs. Here's my PR: #123. Question: Should I be using a background job instead of sending inline?"
+
+**Bad Example:**
+> "Emails not working, can you help?"
+
+## Reporting Issues
+
+### Bug Reports
+
+When reporting bugs, include:
+
+1. **Clear description** of the issue
+2. **Steps to reproduce**
+3. **Expected vs actual behavior**
+4. **Environment details** (browser, OS, Node version)
+5. **Screenshots or videos** if applicable
+6. **Error messages** (full stack trace)
+
+**Template:**
+
+```markdown
+## Bug Description
+Clear, concise description
+
+## Steps to Reproduce
+1. Go to '...'
+2. Click on '...'
+3. Scroll down to '...'
+4. See error
+
+## Expected Behavior
+What should happen
+
+## Actual Behavior
+What actually happens
+
+## Environment
+- OS: [e.g. macOS 13.0]
+- Browser: [e.g. Chrome 119]
+- Node: [e.g. 18.17.0]
+
+## Screenshots
+Add screenshots here
+
+## Error Messages
+```
+Paste error messages here
+```
+```
+
+### Feature Requests
+
+When requesting features, include:
+
+1. **Clear description** of the feature
+2. **Use case** and benefits
+3. **Implementation suggestions** if any
+4. **Priority level** (low, medium, high)
+
+## Resources
+
+### Documentation
+
+- [Next.js Docs](https://nextjs.org/docs)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
+- [Prisma Docs](https://www.prisma.io/docs/)
+- [tRPC Docs](https://trpc.io/docs/)
+- [NextAuth.js Docs](https://next-auth.js.org/)
+- [TailwindCSS Docs](https://tailwindcss.com/docs)
+- [React Docs](https://react.dev/)
+
+### Learning Resources
+
+- [T3 Stack Tutorial](https://create.t3.gg/)
+- [React Patterns](https://react.dev/learn)
+- [TypeScript Deep Dive](https://basarat.gitbook.io/typescript/)
+- [Prisma Tutorial](https://www.prisma.io/docs/getting-started)
+
+## Code Review Guidelines
+
+### As a Reviewer
+
+- Be constructive and respectful
+- Explain **why** changes are needed
+- Suggest alternatives when possible
+- Approve when ready or request changes clearly
+- Focus on:
+  - Code correctness
+  - Security implications
+  - Performance concerns
+  - Maintainability
+  - Test coverage
+
+### As an Author
+
+- Respond to all comments
+- Ask questions if feedback is unclear
+- Make requested changes or discuss alternatives
+- Re-request review after addressing feedback
+- Thank reviewers for their time
+
+## Additional Notes
+
+### Don't Commit
+
+- `.env` files
+- `node_modules/`
+- Build artifacts (`dist/`, `.next/`)
+- IDE-specific files (`.vscode/`, `.idea/`)
+- OS files (`.DS_Store`, `Thumbs.db`)
+- Sensitive data or credentials
+
+### Do Commit
+
+- Source code
+- Configuration files (`.env.example`)
+- Documentation
+- Tests
+- Database migrations
+- Type definitions
+
+---
+
+**Welcome to the team! We're excited to have you working on the DeltaHacks Portal project!** 🚀
+
+For more information:
+- [Architecture Overview](/development/architecture)
+- [Database Schema](/development/database-schema)
+- [tRPC API](/development/trpc-api)
+- [Authentication](/development/authentication)

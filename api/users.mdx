@@ -1,0 +1,213 @@
+---
+title: Users Router
+description: API reference for user management procedures
+---
+
+The Users router handles user profiles, role management, and user queries.
+
+## Procedures
+
+### getProfile
+
+**Type:** Query  
+**Authentication:** Protected
+
+Get user profile information.
+
+<ParamField path="userId" type="string" optional>
+  User ID to fetch (defaults to current user)
+</ParamField>
+
+<ResponseField name="id" type="string">
+  User ID
+</ResponseField>
+
+<ResponseField name="name" type="string" optional>
+  User name
+</ResponseField>
+
+<ResponseField name="email" type="string" optional>
+  User email
+</ResponseField>
+
+<ResponseField name="image" type="string" optional>
+  Profile image URL
+</ResponseField>
+
+<ResponseField name="role" type="array">
+  Array of user roles
+</ResponseField>
+
+<ResponseField name="DH12Application" type="object" optional>
+  Application information if exists
+</ResponseField>
+
+<ResponseField name="DH12Application.id" type="string">
+  Application ID
+</ResponseField>
+
+<ResponseField name="DH12Application.firstName" type="string">
+  First name
+</ResponseField>
+
+<ResponseField name="DH12Application.lastName" type="string">
+  Last name
+</ResponseField>
+
+<ResponseField name="DH12Application.socialText" type="string[]">
+  Social media links
+</ResponseField>
+
+<ResponseField name="DH12Application.studyLocation" type="string" optional>
+  School/university
+</ResponseField>
+
+<ResponseField name="DH12Application.studyDegree" type="string" optional>
+  Degree program
+</ResponseField>
+
+<ResponseField name="DH12Application.studyYearOfStudy" type="string" optional>
+  Year of study
+</ResponseField>
+
+<ResponseField name="DH12Application.studyMajor" type="string" optional>
+  Major
+</ResponseField>
+
+<ResponseField name="DH12Application.status" type="enum">
+  Application status
+</ResponseField>
+
+**Example:**
+```typescript
+// Get current user's profile
+const profile = await trpc.users.getProfile.useQuery();
+
+// Get specific user's profile
+const otherProfile = await trpc.users.getProfile.useQuery("user123");
+```
+
+---
+
+### checkIn
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN role required)
+
+Check in a user (update their application status to CHECKED_IN).
+
+<ParamField path="userId" type="string" required>
+  User ID to check in
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.users.checkIn.mutate("user123");
+```
+
+---
+
+### byRole
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN role required)
+
+Get paginated list of users filtered by role.
+
+<ParamField path="role" type="enum" optional>
+  Filter by role (null for all users)
+</ParamField>
+
+<ParamField path="page" type="number" required>
+  Page number (minimum 1, default 1)
+</ParamField>
+
+<ParamField path="limit" type="number" required>
+  Results per page (minimum 1, default 10)
+</ParamField>
+
+<ParamField path="searchName" type="string" optional>
+  Search by name or email
+</ParamField>
+
+<ResponseField name="users" type="array">
+  Array of user objects
+</ResponseField>
+
+<ResponseField name="totalCount" type="number">
+  Total number of users matching criteria
+</ResponseField>
+
+**Example:**
+```typescript
+const result = await trpc.users.byRole.useQuery({
+  role: "JUDGE",
+  page: 1,
+  limit: 20,
+  searchName: "john"
+});
+// Returns: { users: [...], totalCount: 45 }
+```
+
+---
+
+### addRole
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN role required)
+
+Add a role to a user.
+
+<ParamField path="id" type="string" required>
+  User ID (CUID format)
+</ParamField>
+
+<ParamField path="role" type="enum" required>
+  Role to add (ADMIN, REVIEWER, JUDGE, GENERAL_SCANNER, FOOD_MANAGER, EVENT_MANAGER, etc.)
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.users.addRole.mutate({
+  id: "user123",
+  role: "JUDGE"
+});
+```
+
+---
+
+### removeRole
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN role required)
+
+Remove a role from a user.
+
+<ParamField path="id" type="string" required>
+  User ID (CUID format)
+</ParamField>
+
+<ParamField path="role" type="enum" required>
+  Role to remove
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.users.removeRole.mutate({
+  id: "user123",
+  role: "JUDGE"
+});
+```
+
+---
+
+## Available Roles
+
+The following roles are available in the system:
+
+- **ADMIN** - Full administrative access
+- **REVIEWER** - Can review applications
+- **JUDGE** - Can judge projects
+- **GENERAL_SCANNER** - Can scan QR codes at all stations
+- **FOOD_MANAGER** - Can manage food station scans
+- **EVENT_MANAGER** - Can manage event station scans

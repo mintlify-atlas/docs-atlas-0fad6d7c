@@ -1,0 +1,117 @@
+---
+title: File Router
+description: API reference for file upload/download procedures
+---
+
+The File router handles file uploads and downloads using Cloudflare R2 storage with presigned URLs.
+
+## Procedures
+
+### getUploadUrl
+
+**Type:** Mutation  
+**Authentication:** Public (no authentication required)
+
+Generate a presigned URL for uploading a file to R2 storage.
+
+<ParamField path="filename" type="string" required>
+  Name of the file to upload
+</ParamField>
+
+<ParamField path="contentType" type="string" required>
+  MIME type of the file (e.g., "application/pdf", "image/png")
+</ParamField>
+
+<ResponseField name="url" type="string">
+  Presigned URL for uploading the file
+</ResponseField>
+
+<ResponseField name="method" type="string">
+  HTTP method to use (always "PUT")
+</ResponseField>
+
+**Example:**
+```typescript
+const { url, method } = await trpc.file.getUploadUrl.mutate({
+  filename: "resume.pdf",
+  contentType: "application/pdf"
+});
+
+// Use the presigned URL to upload the file
+const file = new File([...], "resume.pdf", { type: "application/pdf" });
+await fetch(url, {
+  method: method, // "PUT"
+  body: file,
+  headers: {
+    'Content-Type': 'application/pdf'
+  }
+});
+```
+
+**Notes:**
+- The presigned URL expires in 1 hour (3600 seconds)
+- You must upload the file using the PUT method
+- The Content-Type header must match the contentType specified
+
+---
+
+### getDownloadUrl
+
+**Type:** Query  
+**Authentication:** Public (no authentication required)
+
+Generate a presigned URL for downloading a file from R2 storage.
+
+<ParamField path="key" type="string" required>
+  File key/path in R2 storage
+</ParamField>
+
+<ResponseField name="url" type="string">
+  Presigned URL for downloading the file
+</ResponseField>
+
+**Example:**
+```typescript
+const { url } = await trpc.file.getDownloadUrl.useQuery({
+  key: "resume.pdf"
+});
+
+// Use the URL to download or display the file
+window.open(url, '_blank');
+// or
+const response = await fetch(url);
+const blob = await response.blob();
+```
+
+**Notes:**
+- The presigned URL expires in 1 hour (3600 seconds)
+- The key should match the filename used during upload
+- Use this for secure, temporary access to files
+
+---
+
+## File Storage
+
+The DeltaHacks Portal uses Cloudflare R2 for object storage. Files are stored securely and accessed via presigned URLs that expire after 1 hour.
+
+### Upload Flow
+
+1. Call `getUploadUrl` with filename and content type
+2. Receive a presigned URL
+3. Upload the file directly to R2 using PUT request
+4. Store the filename/key for later retrieval
+
+### Download Flow
+
+1. Call `getDownloadUrl` with the file key
+2. Receive a presigned URL
+3. Use the URL to fetch or display the file
+4. URL expires after 1 hour
+
+### Common Content Types
+
+- **PDF**: `application/pdf`
+- **PNG Image**: `image/png`
+- **JPEG Image**: `image/jpeg`
+- **Word Document**: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+- **Plain Text**: `text/plain`

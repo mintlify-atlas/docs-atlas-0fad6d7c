@@ -1,0 +1,598 @@
+---
+title: Judging Router
+description: API reference for judging and project-related procedures
+---
+
+The Judging system includes routers for managing projects, tables, tracks, judging, and time slots.
+
+## Project Router
+
+### uploadProjects
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN role required)
+
+Bulk upload projects for judging.
+
+<ParamField path="projects" type="array" required>
+  Array of project objects
+</ParamField>
+
+<ParamField path="projects[].name" type="string" required>
+  Project name
+</ParamField>
+
+<ParamField path="projects[].description" type="string" optional>
+  Project description (defaults to empty string)
+</ParamField>
+
+<ParamField path="projects[].link" type="string" optional>
+  Project link/URL (defaults to empty string)
+</ParamField>
+
+<ParamField path="projects[].tracks" type="string[]" required>
+  Track names this project belongs to
+</ParamField>
+
+<ParamField path="projects[].status" type="string" optional>
+  Project status (defaults to "Draft")
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.project.uploadProjects.mutate([
+  {
+    name: "Cool App",
+    description: "An amazing project",
+    link: "https://github.com/user/cool-app",
+    tracks: ["General", "Web Development"],
+    status: "Active"
+  }
+]);
+```
+
+---
+
+### createTables
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN role required)
+
+Create judging tables based on project distribution.
+
+<ParamField path="projectsPerTable" type="number" required>
+  Number of projects per table (1-25)
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.project.createTables.mutate({ projectsPerTable: 5 });
+```
+
+---
+
+### getNextProject
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN or JUDGE role required)
+
+Get the next project to judge at a table.
+
+<ParamField path="tableId" type="string" required>
+  Table ID
+</ParamField>
+
+<ParamField path="projectId" type="string" optional>
+  Specific project ID to retrieve
+</ParamField>
+
+<ResponseField name="id" type="string">
+  Project ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Project name
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Project description
+</ResponseField>
+
+<ResponseField name="link" type="string">
+  Project link
+</ResponseField>
+
+**Example:**
+```typescript
+const nextProject = await trpc.project.getNextProject.useQuery({
+  tableId: "table123"
+});
+```
+
+---
+
+### getAllProjects
+
+**Type:** Query  
+**Authentication:** Protected
+
+Get all projects for the current DeltaHacks year.
+
+<ParamField path="No input parameters" />
+
+<ResponseField name="id" type="string">
+  Project ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Project name
+</ResponseField>
+
+**Example:**
+```typescript
+const projects = await trpc.project.getAllProjects.useQuery();
+```
+
+---
+
+### getProjectTimeSlots
+
+**Type:** Query  
+**Authentication:** Protected
+
+Get all time slots for a specific project.
+
+<ParamField path="projectId" type="string" required>
+  Project ID
+</ParamField>
+
+<ResponseField name="startTime" type="datetime">
+  Slot start time
+</ResponseField>
+
+<ResponseField name="endTime" type="datetime">
+  Slot end time
+</ResponseField>
+
+<ResponseField name="table" type="object">
+  Table information including track
+</ResponseField>
+
+**Example:**
+```typescript
+const slots = await trpc.project.getProjectTimeSlots.useQuery({
+  projectId: "proj123"
+});
+```
+
+---
+
+## Table Router
+
+### getTables
+
+**Type:** Query  
+**Authentication:** Protected
+
+Get all judging tables for the current year.
+
+<ParamField path="No input parameters" />
+
+<ResponseField name="id" type="string">
+  Table ID
+</ResponseField>
+
+<ResponseField name="number" type="number">
+  Table number
+</ResponseField>
+
+<ResponseField name="track" type="object">
+  Associated track information
+</ResponseField>
+
+**Example:**
+```typescript
+const tables = await trpc.table.getTables.useQuery();
+```
+
+---
+
+### getTableProjects
+
+**Type:** Query  
+**Authentication:** Protected
+
+Get all projects assigned to a table, with judging status.
+
+<ParamField path="tableId" type="string" required>
+  Table ID
+</ParamField>
+
+<ResponseField name="id" type="string">
+  Project ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Project name
+</ResponseField>
+
+<ResponseField name="isJudged" type="boolean">
+  Whether current user has judged this project
+</ResponseField>
+
+<ResponseField name="TimeSlot" type="array">
+  Time slots for this project at this table
+</ResponseField>
+
+**Example:**
+```typescript
+const projects = await trpc.table.getTableProjects.useQuery({
+  tableId: "table123"
+});
+```
+
+---
+
+## Track Router
+
+### getTracks
+
+**Type:** Query  
+**Authentication:** Protected
+
+Get all judging tracks for the current year.
+
+<ParamField path="No input parameters" />
+
+<ResponseField name="id" type="string">
+  Track ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Track name
+</ResponseField>
+
+<ResponseField name="dhYear" type="string">
+  DeltaHacks year
+</ResponseField>
+
+**Example:**
+```typescript
+const tracks = await trpc.track.getTracks.useQuery();
+```
+
+---
+
+### createTrack
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN role required)
+
+Create a new judging track.
+
+<ParamField path="name" type="string" required>
+  Track name
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.track.createTrack.mutate({ name: "AI/ML" });
+```
+
+---
+
+## Judging Router
+
+### createJudgingResult
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN or JUDGE role required)
+
+Submit or update judging scores for a project.
+
+<ParamField path="projectId" type="string" required>
+  Project ID
+</ParamField>
+
+<ParamField path="tableId" type="string" required>
+  Table ID
+</ParamField>
+
+<ParamField path="responses" type="array" required>
+  Array of rubric responses
+</ParamField>
+
+<ParamField path="responses[].questionId" type="string" required>
+  Rubric question ID
+</ParamField>
+
+<ParamField path="responses[].score" type="number" required>
+  Score (minimum 0)
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.judging.createJudgingResult.mutate({
+  projectId: "proj123",
+  tableId: "table456",
+  responses: [
+    { questionId: "q1", score: 8 },
+    { questionId: "q2", score: 9 }
+  ]
+});
+```
+
+---
+
+### getProjectScores
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN or JUDGE role required)
+
+Get current user's existing scores for a project.
+
+<ParamField path="projectId" type="string" required>
+  Project ID
+</ParamField>
+
+<ResponseField name="questionId" type="string">
+  Rubric question ID
+</ResponseField>
+
+<ResponseField name="score" type="number">
+  Assigned score
+</ResponseField>
+
+**Example:**
+```typescript
+const scores = await trpc.judging.getProjectScores.useQuery({
+  projectId: "proj123"
+});
+```
+
+---
+
+### createRubricQuestion
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN role required)
+
+Create a new rubric question for a track.
+
+<ParamField path="question" type="string" required>
+  Question text
+</ParamField>
+
+<ParamField path="points" type="number" required>
+  Maximum points (0-100)
+</ParamField>
+
+<ParamField path="title" type="string" required>
+  Question title
+</ParamField>
+
+<ParamField path="trackId" type="string" required>
+  Track ID this question belongs to
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.judging.createRubricQuestion.mutate({
+  title: "Innovation",
+  question: "How innovative is this project?",
+  points: 10,
+  trackId: "track123"
+});
+```
+
+---
+
+### getRubricQuestions
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN or JUDGE role required)
+
+Get all rubric questions for a track.
+
+<ParamField path="trackId" type="string" required>
+  Track ID
+</ParamField>
+
+**Example:**
+```typescript
+const questions = await trpc.judging.getRubricQuestions.useQuery({
+  trackId: "track123"
+});
+```
+
+---
+
+### getLeaderboard
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN role required)
+
+Get project leaderboard with scores.
+
+<ParamField path="trackId" type="string" optional>
+  Filter by track ID
+</ParamField>
+
+<ResponseField name="projectId" type="string">
+  Project ID
+</ResponseField>
+
+<ResponseField name="projectName" type="string">
+  Project name
+</ResponseField>
+
+<ResponseField name="link" type="string">
+  Project link
+</ResponseField>
+
+<ResponseField name="score" type="number">
+  Average total score
+</ResponseField>
+
+<ResponseField name="numberOfJudges" type="number">
+  Number of judges who scored this project
+</ResponseField>
+
+<ResponseField name="trackName" type="string">
+  Track name
+</ResponseField>
+
+**Example:**
+```typescript
+const leaderboard = await trpc.judging.getLeaderboard.useQuery({
+  trackId: "track123" // optional
+});
+```
+
+---
+
+### importRubricQuestions
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN role required)
+
+Bulk import rubric questions for multiple tracks.
+
+<ParamField path="questions" type="object" required>
+  Object mapping track names to question arrays
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.judging.importRubricQuestions.mutate({
+  questions: {
+    "General": [
+      { title: "Innovation", question: "How innovative?", points: 10 },
+      { title: "Design", question: "How well designed?", points: 10 }
+    ],
+    "Web Dev": [
+      { title: "UX", question: "User experience quality?", points: 15 }
+    ]
+  }
+});
+```
+
+---
+
+## Time Slot Router
+
+### getTableTimeSlots
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN or JUDGE role required)
+
+Get all time slots for a table.
+
+<ParamField path="tableId" type="string" required>
+  Table ID
+</ParamField>
+
+<ResponseField name="startTime" type="datetime">
+  Slot start time
+</ResponseField>
+
+<ResponseField name="endTime" type="datetime">
+  Slot end time
+</ResponseField>
+
+<ResponseField name="project" type="object">
+  Project information
+</ResponseField>
+
+**Example:**
+```typescript
+const slots = await trpc.timeSlot.getTableTimeSlots.useQuery({
+  tableId: "table123"
+});
+```
+
+---
+
+### createTimeSlots
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN role required)
+
+Generate time slots for all tables and projects.
+
+<ParamField path="slotDurationMinutes" type="number" required>
+  Duration of each slot in minutes (minimum 1, default 10)
+</ParamField>
+
+<ParamField path="startTime" type="datetime" required>
+  Start time for judging (ISO 8601 format)
+</ParamField>
+
+<ResponseField name="message" type="string">
+  Success message
+</ResponseField>
+
+<ResponseField name="endTime" type="datetime">
+  Calculated end time of judging
+</ResponseField>
+
+<ResponseField name="numTables" type="number">
+  Number of tables scheduled
+</ResponseField>
+
+**Example:**
+```typescript
+const result = await trpc.timeSlot.createTimeSlots.mutate({
+  slotDurationMinutes: 10,
+  startTime: "2024-01-20T10:00:00Z"
+});
+```
+
+---
+
+### getAllTimeSlots
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN or JUDGE role required)
+
+Get all distinct time slots.
+
+<ParamField path="No input parameters" />
+
+<ResponseField name="startTime" type="datetime">
+  Slot start time
+</ResponseField>
+
+<ResponseField name="endTime" type="datetime">
+  Slot end time
+</ResponseField>
+
+**Example:**
+```typescript
+const allSlots = await trpc.timeSlot.getAllTimeSlots.useQuery();
+```
+
+---
+
+### getAssignmentsAtTime
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN role required)
+
+Get table-to-project assignments at a specific time.
+
+<ParamField path="time" type="string" required>
+  Time in ISO format
+</ParamField>
+
+<ResponseField name="[tableId]" type="object">
+  Object mapping table IDs to project info
+</ResponseField>
+
+**Example:**
+```typescript
+const assignments = await trpc.timeSlot.getAssignmentsAtTime.useQuery({
+  time: "2024-01-20T10:00:00Z"
+});
+// Returns: { "table1": { id: "proj1", name: "Cool App" }, ... }
+```

@@ -1,0 +1,401 @@
+---
+title: Reviewers Router
+description: API reference for application review procedures
+---
+
+The Reviewers router handles application review workflows, scoring, and status management.
+
+## Procedures
+
+### getApplications
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN or REVIEWER role required)
+
+Get all applications with review statistics.
+
+<ParamField path="No input parameters" />
+
+<ResponseField name="id" type="string">
+  User ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  User name
+</ResponseField>
+
+<ResponseField name="email" type="string" optional>
+  User email
+</ResponseField>
+
+<ResponseField name="DH12ApplicationId" type="string">
+  Application ID
+</ResponseField>
+
+<ResponseField name="reviewCount" type="number">
+  Number of reviews for this application
+</ResponseField>
+
+<ResponseField name="avgScore" type="number">
+  Average review score (0 if no reviews)
+</ResponseField>
+
+**Example:**
+```typescript
+const applications = await trpc.reviewers.getApplications.useQuery();
+```
+
+---
+
+### getApplication
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN or REVIEWER role required)
+
+Get detailed application information.
+
+<ParamField path="dh12ApplicationId" type="string" optional>
+  Application ID to retrieve
+</ParamField>
+
+<ResponseField name="firstName" type="string">
+  First name
+</ResponseField>
+
+<ResponseField name="lastName" type="string">
+  Last name
+</ResponseField>
+
+<ResponseField name="birthday" type="string">
+  Birthday (ISO date string)
+</ResponseField>
+
+<ResponseField name="phone" type="string" optional>
+  Phone number
+</ResponseField>
+
+<ResponseField name="country" type="string">
+  Country
+</ResponseField>
+
+<ResponseField name="studyEnrolledPostSecondary" type="boolean">
+  Whether enrolled in post-secondary
+</ResponseField>
+
+<ResponseField name="studyLocation" type="string" optional>
+  School/university
+</ResponseField>
+
+<ResponseField name="studyDegree" type="string" optional>
+  Degree program
+</ResponseField>
+
+<ResponseField name="studyMajor" type="string" optional>
+  Major
+</ResponseField>
+
+<ResponseField name="studyYearOfStudy" type="string" optional>
+  Year of study
+</ResponseField>
+
+<ResponseField name="studyExpectedGraduation" type="string" optional>
+  Expected graduation (ISO date string)
+</ResponseField>
+
+<ResponseField name="previousHackathonsCount" type="number">
+  Number of previous hackathons
+</ResponseField>
+
+<ResponseField name="longAnswerSocratica" type="string">
+  Answer to Socratica question
+</ResponseField>
+
+<ResponseField name="longAnswerHobby" type="string">
+  Answer to hobby question
+</ResponseField>
+
+<ResponseField name="longAnswerWhy" type="string">
+  Answer to "why" question
+</ResponseField>
+
+<ResponseField name="longAnswerTime" type="string">
+  Answer to time question
+</ResponseField>
+
+<ResponseField name="longAnswerSkill" type="string">
+  Answer to skill question
+</ResponseField>
+
+<ResponseField name="socialText" type="string[]">
+  Social media links
+</ResponseField>
+
+<ResponseField name="interests" type="string" optional>
+  Interests
+</ResponseField>
+
+<ResponseField name="linkToResume" type="string" optional>
+  Resume link
+</ResponseField>
+
+<ResponseField name="tshirtSize" type="enum">
+  T-shirt size (XS, S, M, L, XL)
+</ResponseField>
+
+<ResponseField name="hackerKind" type="string[]">
+  Hacker types/interests
+</ResponseField>
+
+<ResponseField name="alreadyHaveTeam" type="boolean">
+  Whether applicant has a team
+</ResponseField>
+
+<ResponseField name="workshopChoices" type="string[]">
+  Workshop preferences
+</ResponseField>
+
+<ResponseField name="discoverdFrom" type="string[]">
+  How they heard about DeltaHacks
+</ResponseField>
+
+<ResponseField name="considerCoffee" type="boolean">
+  Coffee chat interest
+</ResponseField>
+
+<ResponseField name="dietaryRestrictions" type="string" optional>
+  Dietary restrictions
+</ResponseField>
+
+<ResponseField name="underrepresented" type="enum" optional>
+  Underrepresented status (YES, NO, UNSURE)
+</ResponseField>
+
+<ResponseField name="gender" type="string" optional>
+  Gender
+</ResponseField>
+
+<ResponseField name="race" type="string" optional>
+  Race/ethnicity
+</ResponseField>
+
+<ResponseField name="orientation" type="string" optional>
+  Sexual orientation
+</ResponseField>
+
+<ResponseField name="emergencyContactName" type="string">
+  Emergency contact name
+</ResponseField>
+
+<ResponseField name="emergencyContactPhone" type="string">
+  Emergency contact phone
+</ResponseField>
+
+<ResponseField name="emergencyContactRelation" type="string">
+  Emergency contact relationship
+</ResponseField>
+
+<ResponseField name="hasReviewed" type="boolean">
+  Whether current user has already reviewed this application
+</ResponseField>
+
+**Example:**
+```typescript
+const app = await trpc.reviewers.getApplication.useQuery({
+  dh12ApplicationId: "app123"
+});
+```
+
+---
+
+### getStatus
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN or REVIEWER role required)
+
+Get application status.
+
+<ParamField path="dh12ApplicationId" type="string" required>
+  Application ID
+</ParamField>
+
+<ResponseField name="status" type="enum">
+  Application status (IN_REVIEW, ACCEPTED, REJECTED, WAITLISTED, RSVP, CHECKED_IN)
+</ResponseField>
+
+**Example:**
+```typescript
+const { status } = await trpc.reviewers.getStatus.useQuery({
+  dh12ApplicationId: "app123"
+});
+```
+
+---
+
+### updateStatus
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN role required)
+
+Update application status.
+
+<ParamField path="dh12ApplicationId" type="string" required>
+  Application ID
+</ParamField>
+
+<ParamField path="status" type="enum" required>
+  New status (IN_REVIEW, ACCEPTED, REJECTED, WAITLISTED, RSVP, CHECKED_IN)
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.reviewers.updateStatus.mutate({
+  dh12ApplicationId: "app123",
+  status: "ACCEPTED"
+});
+```
+
+---
+
+### submitScore
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN or REVIEWER role required)
+
+Submit a review score for an application.
+
+<ParamField path="applicationId" type="string" required>
+  Application ID
+</ParamField>
+
+<ParamField path="score" type="number" required>
+  Score (0-17)
+</ParamField>
+
+<ParamField path="comment" type="string" required>
+  Review comment/feedback
+</ParamField>
+
+**Example:**
+```typescript
+await trpc.reviewers.submitScore.mutate({
+  applicationId: "app123",
+  score: 15,
+  comment: "Strong technical background, great project ideas."
+});
+```
+
+**Note:** A reviewer can only score each application once. Attempting to score again will result in a CONFLICT error.
+
+---
+
+### getReviewsForApplication
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN or REVIEWER role required)
+
+Get all reviews for an application.
+
+<ParamField path="applicationId" type="string" required>
+  Application ID
+</ParamField>
+
+<ResponseField name="id" type="string">
+  Review ID
+</ResponseField>
+
+<ResponseField name="score" type="number">
+  Review score
+</ResponseField>
+
+<ResponseField name="comment" type="string">
+  Review comment
+</ResponseField>
+
+<ResponseField name="reviewerId" type="string">
+  Reviewer user ID
+</ResponseField>
+
+<ResponseField name="applicationId" type="string">
+  Application ID
+</ResponseField>
+
+<ResponseField name="reviewer" type="object">
+  Reviewer information
+</ResponseField>
+
+<ResponseField name="reviewer.id" type="string">
+  Reviewer ID
+</ResponseField>
+
+<ResponseField name="reviewer.name" type="string">
+  Reviewer name
+</ResponseField>
+
+<ResponseField name="reviewer.email" type="string" optional>
+  Reviewer email
+</ResponseField>
+
+**Example:**
+```typescript
+const reviews = await trpc.reviewers.getReviewsForApplication.useQuery({
+  applicationId: "app123"
+});
+```
+
+---
+
+### updateApplicationStatusByScoreRange
+
+**Type:** Mutation  
+**Authentication:** Protected (ADMIN role required)
+
+Bulk update application statuses based on score range.
+
+<ParamField path="status" type="enum" required>
+  Status to set (ACCEPTED, REJECTED, WAITLISTED, IN_REVIEW)
+</ParamField>
+
+<ParamField path="minRange" type="number" required>
+  Minimum score (0+)
+</ParamField>
+
+<ParamField path="maxRange" type="number" required>
+  Maximum score (up to 17)
+</ParamField>
+
+**Example:**
+```typescript
+// Accept all applications with average score between 14-17
+await trpc.reviewers.updateApplicationStatusByScoreRange.mutate({
+  status: "ACCEPTED",
+  minRange: 14,
+  maxRange: 17
+});
+
+// Reject applications with average score between 0-8
+await trpc.reviewers.updateApplicationStatusByScoreRange.mutate({
+  status: "REJECTED",
+  minRange: 0,
+  maxRange: 8
+});
+
+// Waitlist applications with average score between 9-13
+await trpc.reviewers.updateApplicationStatusByScoreRange.mutate({
+  status: "WAITLISTED",
+  minRange: 9,
+  maxRange: 13
+});
+```
+
+---
+
+## Application Statuses
+
+The following statuses are available:
+
+- **IN_REVIEW** - Application is being reviewed
+- **ACCEPTED** - Application accepted, awaiting RSVP
+- **REJECTED** - Application rejected
+- **WAITLISTED** - Application waitlisted
+- **RSVP** - User has RSVP'd to attend
+- **CHECKED_IN** - User has checked in at the event

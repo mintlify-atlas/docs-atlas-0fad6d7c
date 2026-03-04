@@ -1,0 +1,203 @@
+---
+title: QR Codes and Digital Wallet
+description: Using QR codes for check-in and meal redemption
+---
+
+DeltaHacks uses QR codes for event check-in and meal tracking. Each hacker receives a unique QR code accessible through their profile.
+
+## Accessing Your QR Code
+
+Your QR code is available once you've RSVP'd for the event:
+
+<Steps>
+  <Step title="Navigate to your profile">
+    From the dashboard, click **Check-In QR Code** or go to `/profile`.
+  </Step>
+  
+  <Step title="View your QR code">
+    Your profile displays a large QR code containing your unique user ID.
+  </Step>
+  
+  <Step title="Add to digital wallet (optional)">
+    Save your QR code to Apple Wallet or Google Wallet for quick access.
+  </Step>
+</Steps>
+
+## Profile Page Information
+
+Your profile displays:
+
+- **Name** - From your DH12 application (first and last name)
+- **Education Details:**
+  - Year of study
+  - Degree program
+  - Major
+  - University/institution
+- **QR Code** - Large scannable code with your user ID
+- **Wallet Integration** - Buttons to add to Apple/Google Wallet
+- **Social Links** - Your provided social media links (if any)
+
+<Note>
+The QR code encodes the URL: `https://portal.deltahacks.com/profile/[your-user-id]`
+</Note>
+
+## Event Check-In
+
+### For Hackers
+
+When you arrive at DeltaHacks:
+
+1. Open your profile page on your phone
+2. Show your QR code to the check-in station
+3. Staff will scan your QR code
+4. Your status changes to `CHECKED_IN`
+5. You're ready to start hacking!
+
+### What Happens on Check-In
+
+- Your application status updates to `CHECKED_IN`
+- You gain access to checked-in dashboard features
+- WiFi information becomes visible
+- Your meal counter is initialized
+
+## Meal Ticket System
+
+### How Meal Tracking Works
+
+The QR code is also used for meal redemption:
+
+- **Meal Counter** - Each user has a `mealsTaken` count (starts at 0)
+- **Last Meal Timestamp** - Tracks when you last redeemed a meal
+- **Scanning Stations** - Food stations have scanners to track meal redemption
+
+### At Meal Times
+
+1. Queue at the meal station
+2. Show your QR code when you reach the front
+3. Staff scans your code
+4. Your meal count increments
+5. Timestamp is recorded
+
+<Note>
+The system may enforce limits to ensure fair distribution of meals across all attendees.
+</Note>
+
+## Apple Wallet Integration
+
+You can add your DeltaHacks pass to Apple Wallet:
+
+### Adding to Apple Wallet
+
+1. Go to your profile page
+2. Tap **Add to Apple Wallet** button
+3. The system generates a `.pkpass` file using `passkit-generator`
+4. Follow iOS prompts to add the pass to Wallet
+
+### What's on the Pass
+
+- Your name
+- DeltaHacks branding
+- QR code/barcode for scanning
+- Event dates
+
+<Note>
+Apple Wallet passes work on iPhone and Apple Watch. You can access them even without internet connection.
+</Note>
+
+## Google Wallet Integration
+
+Similar to Apple Wallet, you can add to Google Wallet:
+
+### Adding to Google Wallet
+
+1. Go to your profile page
+2. Tap **Add to Google Wallet** button  
+3. Follow Android prompts to save the pass
+4. Access from Google Wallet app
+
+## Scanning Stations
+
+DeltaHacks uses several types of scanning stations:
+
+### Station Types
+
+Stations are configured with:
+- **Station Name** - e.g., "Main Entrance", "Meal Station 1"
+- **Option** - Additional identifier for the station
+
+Each scan creates an `EventLog` entry with:
+- User ID
+- Station ID  
+- Timestamp
+
+### Event Logging
+
+When your QR code is scanned:
+
+```typescript
+EventLog {
+  userId: "your-user-id"
+  stationId: "station-id"
+  timestamp: DateTime
+}
+```
+
+This creates a unique record per user per station, tracking your participation throughout the event.
+
+## Best Practices
+
+### Keep Your QR Code Accessible
+
+- Bookmark your profile page
+- Add to home screen on mobile
+- Save to digital wallet for offline access
+- Take a screenshot as backup (though live page is preferred)
+
+### At Scanning Stations
+
+- Have your QR code ready before reaching the front of the line
+- Increase screen brightness for easier scanning
+- Hold your phone steady while being scanned
+- Wait for confirmation before moving on
+
+<Warning>
+Do not share your QR code with others. Each QR code is unique to you and used for tracking your meals and event participation.
+</Warning>
+
+## Troubleshooting
+
+### QR Code Won't Scan
+
+- Increase screen brightness
+- Make sure the QR code is fully visible (not zoomed/cropped)
+- Clean your screen
+- Ask staff to manually look up your profile by name
+
+### Can't Access Profile
+
+- Make sure you're logged in to the portal
+- Check your internet connection
+- Try refreshing the page
+- Use digital wallet pass if you saved it earlier
+
+### Lost Access to Phone
+
+- Contact DeltaHacks staff at the check-in desk
+- They can look up your profile by email or name
+- Manual check-in is available as fallback
+
+## Privacy Note
+
+Your QR code URL is publicly accessible but only shows:
+- Name and education info from your application
+- Social links you chose to share
+
+It does NOT show:
+- Your application responses
+- Contact information
+- Resume
+- Private profile details
+
+<Note>
+Other hackers can scan your QR code to view your profile and connect with you. Only share your social links if you're comfortable with them being public.
+</Note>

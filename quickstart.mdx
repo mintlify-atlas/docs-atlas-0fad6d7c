@@ -1,80 +1,324 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start
+description: Get started with DeltaHacks Portal in minutes
 ---
 
-## Get started in three steps
+# Quick Start Guide
 
-Get your documentation site running locally and make your first customization.
+This guide will help you get DeltaHacks Portal up and running quickly, whether you're an organizer setting up a new event or getting familiar with the platform.
 
-### Step 1: Set up your local environment
+## For Organizers
+
+<Steps>
+  <Step title="Create Your Account">
+    Sign up using one of the supported OAuth providers:
+    
+    - **Discord** - Recommended for hackathon communities
+    - **Google** - Widely used by students
+    - **GitHub** - Popular with developers
+    - **LinkedIn** - Professional networking
+    - **Azure AD** - For institutional accounts
+    
+    The first user to sign up is typically granted admin privileges, or you'll need an existing admin to assign you the appropriate role.
+  </Step>
+
+  <Step title="Configure Your Event">
+    Once you have admin access, configure the essential settings:
+    
+    **Set Up Authentication Providers**
+    
+    Configure OAuth credentials in your environment variables:
+    
+    ```bash
+    # Discord Provider
+    DISCORD_CLIENT_ID=your_discord_client_id
+    DISCORD_CLIENT_SECRET=your_discord_client_secret
+    
+    # Google Provider
+    GOOGLE_CLIENT_ID=your_google_client_id
+    GOOGLE_CLIENT_SECRET=your_google_client_secret
+    
+    # GitHub Provider  
+    GITHUB_CLIENT_ID=your_github_client_id
+    GITHUB_CLIENT_SECRET=your_github_client_secret
+    ```
+    
+    **Configure Base Settings**
+    
+    ```bash
+    # NextAuth Configuration
+    NEXTAUTH_SECRET=your_secure_random_string
+    NEXTAUTH_URL=https://your-domain.com
+    NEXT_PUBLIC_URL=https://your-domain.com
+    ```
+    
+    <Tip>
+      Generate a secure `NEXTAUTH_SECRET` using: `openssl rand -base64 32`
+    </Tip>
+  </Step>
+
+  <Step title="Set Up Your Database">
+    Configure your CockroachDB connection:
+    
+    ```bash
+    DATABASE_URL="postgresql://user:password@host:26257/database?sslmode=verify-full"
+    ```
+    
+    For production deployments, use a managed CockroachDB cluster with SSL enabled.
+    
+    <Warning>
+      Never commit your `.env` file to version control. Use `.env.example` as a template.
+    </Warning>
+  </Step>
+
+  <Step title="Configure Optional Services">
+    Enable additional features by configuring these optional services:
+    
+    **Email Notifications (SendGrid)**
+    
+    ```bash
+    SENDGRID_API_KEY=your_sendgrid_api_key
+    ```
+    
+    **File Storage (Cloudflare R2)**
+    
+    ```bash
+    R2_ACCOUNT_ID=your_account_id
+    R2_ACCESS_KEY_ID=your_access_key
+    R2_SECRET_KEY_ID=your_secret_key
+    R2_BUCKET_NAME=your_bucket_name
+    ```
+    
+    **Analytics (PostHog)**
+    
+    ```bash
+    NEXT_PUBLIC_POSTHOG_KEY=your_posthog_key
+    NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
+    POSTHOG_KEY=your_posthog_key
+    ```
+    
+    **Apple Wallet Passes**
+    
+    ```bash
+    APPLE_WWDR=your_wwdr_certificate
+    APPLE_SIGNER_CERT=your_signer_certificate
+    APPLE_SIGNER_KEY=your_signer_key
+    APPLE_SIGNER_KEY_PASSPHRASE=your_passphrase
+    ```
+  </Step>
+
+  <Step title="Initialize the Database">
+    Run the Prisma migrations to set up your database schema:
+    
+    <CodeGroup>
+      ```bash npm
+      npm run db:generate
+      npm run db:push
+      ```
+      
+      ```bash pnpm
+      pnpm db:generate
+      pnpm db:push
+      ```
+    </CodeGroup>
+    
+    This will:
+    - Generate the Prisma Client with TypeScript types
+    - Push the schema to your database
+    - Create all necessary tables and relationships
+  </Step>
+
+  <Step title="Invite Your Team">
+    Assign roles to team members to distribute responsibilities:
+    
+    **Available Roles**
+    
+    - `ADMIN` - Full system access, can manage all features
+    - `REVIEWER` - Can review and score hacker applications
+    - `JUDGE` - Can score project submissions during judging
+    - `FOOD_MANAGER` - Can scan QR codes for meal distribution
+    - `EVENT_MANAGER` - Can check attendees into workshops and events
+    - `GENERAL_SCANNER` - Can perform general QR code scanning
+    - `SPONSOR` - Can view participant data and analytics
+    - `HACKER` - Default role for all applicants
+    
+    <Note>
+      Users can have multiple roles. For example, an organizer might be both an `ADMIN` and a `JUDGE`.
+    </Note>
+  </Step>
+
+  <Step title="Enable Applications">
+    Once your event is configured, enable hacker applications:
+    
+    1. Navigate to the Admin Dashboard
+    2. Configure application questions and requirements
+    3. Set application open/close dates
+    4. Enable the application form
+    
+    The portal includes customizable application forms with:
+    - Personal information (name, birthday, phone, country)
+    - Academic details (school, degree, major, graduation year)
+    - Experience level (previous hackathons attended)
+    - Long-form questions (customizable per year)
+    - Demographics (optional, for diversity tracking)
+    - MLH Code of Conduct acceptance
+    - Emergency contact information
+    - Dietary restrictions and accessibility needs
+  </Step>
+
+  <Step title="Launch and Monitor">
+    Your hackathon portal is now ready! Monitor activity through:
+    
+    **Admin Dashboard**
+    - View real-time registration numbers
+    - Track application review progress
+    - Monitor check-in rates
+    - View event participation
+    
+    **Analytics (if enabled)**
+    - User engagement metrics via PostHog
+    - Application funnel analysis
+    - Feature usage tracking
+    
+    <CodeGroup>
+      ```bash npm
+      npm run build
+      npm start
+      ```
+      
+      ```bash pnpm  
+      pnpm build
+      pnpm start
+      ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+## Quick Reference
+
+### Essential Commands
+
+<CodeGroup>
+  ```bash npm
+  # Start development server
+  npm run dev
+  
+  # Build for production
+  npm run build
+  
+  # Start production server
+  npm start
+  
+  # Database operations
+  npm run db:generate    # Generate Prisma client
+  npm run db:push        # Push schema to database
+  npm run db:migrate     # Run migrations
+  npm run db:studio      # Open Prisma Studio
+  ```
+  
+  ```bash pnpm
+  # Start development server
+  pnpm dev
+  
+  # Build for production
+  pnpm build
+  
+  # Start production server
+  pnpm start
+  
+  # Database operations
+  pnpm db:generate       # Generate Prisma client
+  pnpm db:push          # Push schema to database
+  pnpm db:migrate       # Run migrations
+  pnpm db:studio        # Open Prisma Studio
+  ```
+</CodeGroup>
+
+### Environment Variables Checklist
 
 <AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
+  <Accordion title="Required Variables">
+    ```bash
+    DATABASE_URL           # CockroachDB connection string
+    NEXTAUTH_SECRET       # Random secret for session encryption
+    NEXTAUTH_URL          # Your application URL
+    NEXT_PUBLIC_URL       # Public-facing URL
+    ```
   </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+  
+  <Accordion title="OAuth Providers (at least one required)">
+    ```bash
+    # Discord
+    DISCORD_CLIENT_ID
+    DISCORD_CLIENT_SECRET
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
+    # Google
+    GOOGLE_CLIENT_ID
+    GOOGLE_CLIENT_SECRET
+    
+    # GitHub
+    GITHUB_CLIENT_ID
+    GITHUB_CLIENT_SECRET
+    
+    # LinkedIn
+    LINKEDIN_CLIENT_ID
+    LINKEDIN_CLIENT_SECRET
+    
+    # Azure AD
+    AZURE_AD_CLIENT_ID
+    AZURE_AD_TENANT_ID
+    AZURE_AD_CLIENT_SECRET
+    ```
+  </Accordion>
+  
+  <Accordion title="Optional Services">
+    ```bash
+    # Email (SendGrid)
+    SENDGRID_API_KEY
+    
+    # File Storage (Cloudflare R2)
+    R2_ACCOUNT_ID
+    R2_ACCESS_KEY_ID
+    R2_SECRET_KEY_ID
+    R2_BUCKET_NAME
+    
+    # Analytics (PostHog)
+    NEXT_PUBLIC_POSTHOG_KEY
+    NEXT_PUBLIC_POSTHOG_HOST
+    POSTHOG_KEY
+    
+    # Logging (LogSnag)
+    LOGSNAG_TOKEN
+    
+    # Forms (TypeForm)
+    TYPEFORM_API_KEY
+    
+    # Apple Wallet
+    APPLE_WWDR
+    APPLE_SIGNER_CERT
+    APPLE_SIGNER_KEY
+    APPLE_SIGNER_KEY_PASSPHRASE
+    ```
   </Accordion>
 </AccordionGroup>
 
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
+## Next Steps
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Installation Guide" icon="code" href="/installation">
+    Set up a local development environment for customization
+  </Card>
+  <Card title="Organizer Guide" icon="users-gear" href="/organizers/admin-dashboard">
+    Learn advanced features for managing your hackathon
+  </Card>
+  <Card title="Database Schema" icon="database" href="/development/database-schema">
+    Understand the data model and relationships
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/application">
+    Explore the tRPC API endpoints
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+<Tip>
+  Need help? Contact the DeltaHacks tech team at [tech@deltahacks.com](mailto:tech@deltahacks.com) or open an issue on GitHub.
+</Tip>

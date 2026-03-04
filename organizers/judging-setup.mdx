@@ -1,0 +1,461 @@
+---
+title: Judging Setup
+description: Configuring project judging including tracks, schedules, and rubrics
+---
+
+## Overview
+
+The judging system allows organizers to set up project presentations, assign judges, and score submissions. Access judging admin at `/admin/judging`.
+
+## Judging Data Model
+
+The judging system uses several interconnected models:
+
+### Core Models
+
+```prisma
+model Track {
+  id             String           @id
+  name           String
+  dhYear         String
+  ProjectTrack   ProjectTrack[]
+  Table          Table[]
+  RubricQuestion RubricQuestion[]
+  
+  @@unique([name, dhYear])
+}
+
+model Project {
+  id             String          @id
+  name           String
+  description    String
+  link           String          // Devpost URL
+  tracks         ProjectTrack[]
+  judgingResults JudgingResult[]
+  TimeSlot       TimeSlot[]
+  dhYear         String
+}
+
+model Table {
+  id            String          @id
+  number        Int
+  trackId       String
+  track         Track           @relation(...)
+  dhYear        String
+  TimeSlot      TimeSlot[]
+  JudgingResult JudgingResult[]
+  
+  @@unique([number, dhYear])
+}
+```
+
+## Track Configuration
+
+Tracks categorize projects by theme or sponsor prize.
+
+### Common Track Examples
+
+- **Best Overall**
+- **Best Use of AI**
+- **Best Hardware Hack**  
+- **Best Healthcare Solution**
+- **Sponsor Prize - Company X**
+
+### Creating Tracks
+
+Tracks are typically created via admin interface or database migration:
+
+```tsx
+await prisma.track.create({
+  data: {
+    name: "Best Use of AI",
+    dhYear: "DH12"
+  }
+})
+```
+
+<Note>
+The `dhYear` field ensures tracks are scoped to specific DeltaHacks years. DH11 and DH12 can have different track configurations.
+</Note>
+
+## Project Import
+
+Import projects from Devpost or DoraHacks CSV exports.
+
+### CSV Upload Process
+
+1. Navigate to `/admin/judging`
+2. Upload CSV file in the **Import Project Data** section
+3. System processes and creates Project records
+
+### Supported Platforms
+
+**Devpost CSV Format**
+```csv
+Project Name,Description,URL,Track 1,Track 2
+Awesome Project,Cool description,https://devpost.com/...,Best AI,Best Overall
+```
+
+**DoraHacks CSV Format**
+_(Similar structure, different columns)_
+
+### CSV Processors
+
+The system uses platform-specific processors:
+
+```tsx
+import { DevpostCSVProcessor } from "../utils/csvProcessors"
+
+<CSVUploader csvProcessor={new DevpostCSVProcessor()} />
+```
+
+Processors parse CSV and create:
+- Project records with name, description, link
+- ProjectTrack associations (many-to-many)
+
+## Table Assignment
+
+Tables are physical presentation locations where projects demo.
+
+### Creating Tables
+
+Specify how many projects per table:
+
+```tsx
+await createTables({
+  projectsPerTable: 10 // 10 projects rotate through each table
+})
+```
+
+The system:
+1. Counts total projects
+2. Divides by `projectsPerTable`  
+3. Creates that many Table records
+4. Assigns projects round-robin to tables
+
+Example:
+- 100 projects
+- 10 projects per table
+- Creates 10 tables (numbered 1-10)
+
+### Table Distribution
+
+Projects are assigned to ensure even distribution across tables and tracks.
+
+## Timeslot Scheduling
+
+Timeslots define when each project presents at each table.
+
+### Creating Schedule
+
+```tsx
+await createTimeSlots({
+  startTime: "2024-01-15T10:00:00Z"
+})
+```
+
+The system:
+1. Takes the `startTime`
+2. Creates rotating schedule for all projects
+3. Each project gets multiple timeslots (one per table rotation)
+4. Allocates time based on number of projects and tables
+
+### Timeslot Model
+
+```prisma
+model TimeSlot {
+  id        String   @id
+  startTime DateTime
+  endTime   DateTime
+  project   Project  @relation(...)
+  projectId String
+  table     Table    @relation(...)
+  tableId   String
+  dhYear    String
+  
+  @@unique([projectId, startTime])
+  @@unique([tableId, startTime])
+}
+```
+
+Constraints ensure:
+- Each project only scheduled once per timeslot
+- Each table only has one project per timeslot
+
+### Schedule Output
+
+After creating timeslots, the system displays:
+
+- **Total Duration**: "3 hours and 45 minutes"
+- **End Time**: "13:45"  
+- **Number of Tables**: "10"
+
+Use this to:
+- Plan judging duration
+- Communicate schedule to participants
+- Assign judge availability
+
+## Rubric Configuration
+
+Rubrics define the scoring criteria for judges. Access at `/admin/judging/rubric`.
+
+### Rubric Question Model
+
+```prisma
+model RubricQuestion {
+  id        String           @id
+  title     String           // Short title
+  question  String           // Full question (supports Markdown)
+  points    Int              // Max points (e.g., 10)
+  trackId   String
+  track     Track            @relation(...)
+  responses RubricResponse[]
+}
+```
+
+### Creating Questions
+
+Questions are scoped to tracks (different tracks can have different rubrics):
+
+1. Select a **Track**
+2. Enter **Title**: "Technical Complexity"
+3. Enter **Question**: "How technically challenging was the implementation?"  
+4. Set **Points**: 10
+5. Click **Create Question**
+
+### Question Formatting
+
+Questions support **Markdown** for rich formatting:
+
+```markdown
+## Evaluate the following:
+
+- Code quality and architecture
+- Use of modern frameworks  
+- Technical difficulty
+- Innovation in approach
+
+**Consider**: Is this pushing boundaries or using standard approaches?
+```
+
+### Bulk Import
+
+Import multiple questions via JSON:
+
+```json
+[
+  {
+    "title": "Technical Complexity",
+    "question": "How technically challenging was the implementation?",
+    "points": 10,
+    "trackId": "clxxx"
+  },
+  {
+    "title": "Design Quality",  
+    "question": "How polished is the user interface and experience?",
+    "points": 10,
+    "trackId": "clxxx"
+  }
+]
+```
+
+Upload JSON file in the **Import Rubric Questions** section.
+
+### Typical Rubric Structure
+
+For a 50-point rubric:
+
+1. **Technical Complexity** (15 points)
+2. **Design & UX** (10 points)
+3. **Impact & Usefulness** (15 points)
+4. **Presentation Quality** (10 points)
+
+## Judge Assignment
+
+Judges are users with the `JUDGE` role.
+
+### Assigning Judge Role
+
+See [User Management](/organizers/user-management) for role assignment options:
+
+- Via admin role management interface
+- Via QR scan at "judges" station
+
+### Judge Interface
+
+Judges access the judging portal (typically at `/judging`) where they:
+
+1. View their assigned schedule (optional)
+2. Select a project to judge
+3. See the rubric questions for the track
+4. Score each question
+5. Submit their judging result
+
+## Judging Results
+
+Scores are stored as JudgingResult records:
+
+```prisma
+model JudgingResult {
+  id String @id
+  
+  judgeId String
+  judge   User   @relation("judge", ...)
+  
+  project   Project          @relation(...)
+  projectId String
+  responses RubricResponse[] // Individual question scores
+  dhYear    String
+  
+  table   Table  @relation(...)
+  tableId String
+  
+  @@unique([judgeId, projectId])
+}
+
+model RubricResponse {
+  id              String         @id
+  score           Int            // Points awarded (0 to question.points)
+  judgingResultId String
+  questionId      String
+  judgingResult   JudgingResult  @relation(...)
+  question        RubricQuestion @relation(...)
+  
+  @@unique([judgingResultId, questionId])
+}
+```
+
+Each judge can score each project only once (enforced by unique constraint).
+
+## Leaderboard
+
+View results at `/admin/judging/leaderboard`.
+
+### Score Calculation
+
+Project scores are calculated by:
+
+1. Sum all RubricResponse scores for a project
+2. Average across all judges who scored it
+3. Optionally filter by track
+
+### Leaderboard Display
+
+| Rank | Project Name | Link | Score | Judges | Track |
+|------|--------------|------|-------|--------|-------|
+| 1 | AI Health Assistant | [View] | 87.5 | 4 | Best AI |
+| 2 | Smart Garden | [View] | 85.2 | 3 | Best Hardware |
+
+### Track Filtering
+
+Switch between:
+- **All Tracks**: Combined leaderboard
+- **Specific Track**: Winners for that track/prize
+
+### Real-Time Updates
+
+The leaderboard refreshes every 30 seconds to show latest scores as judges submit results:
+
+```tsx
+useQuery(getLeaderboard, {
+  refetchInterval: 30 * 1000,
+  refetchIntervalInBackground: true
+})
+```
+
+## Complete Judging Workflow
+
+### Pre-Event Setup
+
+1. **Create tracks** for your prizes/categories
+2. **Import projects** from Devpost CSV
+3. **Assign projects to tracks** (done during import or manually)
+4. **Create tables** based on venue layout
+5. **Generate timeslot schedule**
+6. **Configure rubric questions** for each track
+7. **Assign judge roles** to external judges
+
+### During Judging
+
+1. **Judges arrive** and scan at "judges" station (grants JUDGE role)
+2. **Judges access** judging portal on their device
+3. **Judges visit tables** according to schedule
+4. **Judges score** each project using the rubric
+5. **Scores appear** on leaderboard in real-time
+
+### Post-Judging
+
+1. **Review leaderboard** for each track
+2. **Export results** for prize announcements
+3. **Verify** minimum number of judges per project
+4. **Handle edge cases** (ties, low judge counts)
+5. **Announce winners** at closing ceremony
+
+## Best Practices
+
+### Track Design
+
+- **3-5 tracks max** for small events (under 100 projects)
+- **Align with sponsors** - create tracks for sponsor prizes
+- **Broad categories** - avoid overly specific tracks
+
+### Table Layout
+
+- **10-15 projects per table** is ideal
+- **Physical space** - ensure tables fit in venue
+- **Power outlets** - each table needs power
+
+### Judging Schedule
+
+- **5-7 minutes per project** for judge scoring
+- **Buffer time** between rotations for movement
+- **3+ judges per project** for reliable averages
+
+### Rubric Design
+
+- **4-6 questions** per rubric  
+- **Clear criteria** - avoid subjective questions
+- **50-100 total points** for granularity
+- **Track-specific** - different rubrics for different tracks
+
+### Judge Management
+
+- **Brief judges** before event on rubric usage
+- **Distribute evenly** - ensure each project gets similar judge count
+- **Monitor progress** - check leaderboard to identify under-judged projects
+
+<Warning>
+Do not make major changes to tracks, tables, or timeslots after judging has started. This can invalidate existing scores and confuse judges.
+</Warning>
+
+## Troubleshooting
+
+### Projects Missing from Schedule
+
+- Verify project was imported successfully
+- Check that `dhYear` matches current year
+- Ensure project is assigned to at least one track
+
+### Duplicate Timeslots
+
+- Unique constraints prevent this, but if it occurs:
+- Delete all timeslots and regenerate
+- Verify table records are correct
+
+### Judge Can't Access Portal
+
+- Verify user has JUDGE role
+- Check that dhYear is set correctly
+- Ensure judge is logged in
+
+### Leaderboard Shows Incorrect Scores
+
+- Scores are averaged across judges
+- Check that all responses have correct questionId
+- Verify points awarded are within question.points limit
+
+## Related Pages
+
+- [User Management](/organizers/user-management) - Assign JUDGE role
+- [Admin Dashboard](/organizers/admin-dashboard) - Configure dhYear
+- [Event Management](/organizers/event-management) - Judge check-in process

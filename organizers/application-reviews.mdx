@@ -1,0 +1,259 @@
+---
+title: Application Reviews
+description: Reviewing and grading hacker applications
+---
+
+## Overview
+
+The application review workflow allows ADMIN and REVIEWER roles to evaluate applications and make acceptance decisions. Access the grading portal at `/admin/grade`.
+
+## Review Models
+
+Reviews are stored per DeltaHacks year:
+
+- **DH11Review** - Reviews for DeltaHacks 11 applications
+- **DH12Review** - Reviews for DeltaHacks 12 applications
+
+Each review contains:
+```prisma
+model DH12Review {
+  id            String          @id @default(cuid())
+  score         Float
+  comment       String
+  reviewerId    String
+  applicationId String
+  
+  application DH12Application @relation(...)
+  reviewer    User            @relation(...)
+}
+```
+
+## Scoring Rubric
+
+Applications are scored on a **0-17 point scale**:
+
+- **0-5**: Does not meet criteria for acceptance
+- **6-10**: Meets basic criteria, consider for waitlist
+- **11-13**: Strong application, likely accept
+- **14-17**: Excellent application, definitely accept
+
+### Score Submission
+
+```tsx
+await submitScore({
+  applicationId: "clxxx",
+  score: 14.5,
+  comment: "Strong technical background, great project ideas"
+})
+```
+
+<Note>
+Each reviewer can only submit ONE review per application. Attempting to review the same application twice will result in a CONFLICT error.
+</Note>
+
+## Review Workflow
+
+### 1. View Applications List
+
+The grading portal displays all applications with:
+- **Name** and **email**
+- **Review count** - how many reviews received
+- **Average score** - mean of all reviews
+- **Application ID** for reference
+
+### 2. Review Individual Application
+
+Click an application to view:
+- Personal information (name, birthday, location)
+- Academic background (school, major, year of study)
+- Previous hackathon experience
+- Long-form answers to application questions
+- Resume link (if provided)
+- Demographics and dietary restrictions
+
+### 3. Submit Review
+
+Enter:
+- **Score** (0-17, supports decimals like 14.5)
+- **Comment** explaining your decision
+
+The system validates:
+- Score is within 0-17 range
+- Comment is provided
+- Reviewer hasn't already reviewed this application
+
+### 4. View Existing Reviews
+
+Admins can see all reviews for an application:
+```tsx
+const reviews = await getReviewsForApplication({
+  applicationId: "clxxx"
+})
+
+// Returns array of:
+// - score
+// - comment  
+// - reviewer name and email
+```
+
+## Application Status Management
+
+### Status Types
+
+Applications progress through these statuses:
+
+```prisma
+enum Status {
+  IN_REVIEW     // Initial status for all applications
+  REJECTED      // Not accepted
+  WAITLISTED    // Backup if space opens
+  ACCEPTED      // Invited to attend
+  RSVP          // User confirmed attendance
+  CHECKED_IN    // User arrived at event
+}
+```
+
+### Individual Status Updates
+
+<Warning>
+Only ADMIN users can change application status. REVIEWER role can only submit scores.
+</Warning>
+
+```tsx
+await updateStatus({
+  dh12ApplicationId: "clxxx",
+  status: "ACCEPTED"
+})
+```
+
+Status changes are logged to LogSnag with icons:
+- ✅ ACCEPTED
+- ❌ REJECTED  
+- 🕰️ WAITLISTED
+- 🎟️ RSVP
+
+### Bulk Status Updates by Score Range
+
+Admins can update multiple applications at once based on average score:
+
+```tsx
+await updateApplicationStatusByScoreRange({
+  minRange: 13.0,
+  maxRange: 17.0,
+  status: "ACCEPTED"
+})
+```
+
+This finds all applications with average score between 13.0-17.0 and sets them to ACCEPTED.
+
+#### Example Workflow
+
+1. Set high scorers (14-17) to ACCEPTED
+2. Set medium scorers (11-13) to WAITLISTED  
+3. Set low scorers (0-10) to REJECTED
+4. Manually review edge cases
+
+<Note>
+Bulk updates use the **average score** across all reviews. Applications with no reviews (avgScore = 0) won't be affected.
+</Note>
+
+## Statistics Dashboard
+
+The grading portal shows:
+
+### Application Statistics
+- **Applications Decisioned**: Count of non-IN_REVIEW statuses
+- **Total Applications**: All submitted applications
+- **Status Breakdown**: Count by each status type
+  ```
+  IN_REVIEW: 245
+  ACCEPTED: 180
+  WAITLISTED: 45
+  REJECTED: 20
+  ```
+
+### Review Statistics  
+- **Total Grades Given**: Sum of all reviews across all applications
+- **Average Reviews per Application**: Distribution of review coverage
+
+## Review Assignment Strategy
+
+<Note>
+The portal does not automatically assign applications to reviewers. Reviewers can choose which applications to review.
+</Note>
+
+Recommended approach:
+1. Aim for **3+ reviews per application** for reliable averages
+2. Assign reviewers to review in batches (e.g., 50 applications each)
+3. Track review counts to identify under-reviewed applications
+4. Use the applications table to sort by review count
+
+## Exporting Accepted Applicants
+
+To export accepted applicants for email campaigns or analysis:
+
+```tsx
+// Get all accepted users
+const accepted = await prisma.user.findMany({
+  where: {
+    DH12Application: {
+      status: "ACCEPTED"
+    }
+  },
+  include: {
+    DH12Application: true
+  }
+})
+```
+
+You can then:
+- Extract email addresses for bulk email
+- Generate CSV for external tools
+- Create mailing lists
+
+## Data Model Details
+
+### Review Calculation
+
+```tsx
+// Average score is calculated via database aggregation
+const reviewStats = await prisma.dH12Review.groupBy({
+  by: ["applicationId"],
+  _avg: { score: true },
+  _count: { applicationId: true }
+})
+
+// Returns:
+// - applicationId
+// - _avg.score (average)
+// - _count.applicationId (review count)
+```
+
+### Application Fields
+
+Reviewers can see:
+- `firstName`, `lastName`
+- `phone`, `country`, `birthday`
+- `studyLocation`, `studyMajor`, `studyYearOfStudy`
+- `previousHackathonsCount`
+- Long answers: `longAnswerHobby`, `longAnswerWhy`, `longAnswerTime`, `longAnswerSkill`
+- `linkToResume`
+- `dietaryRestrictions`
+- `gender`, `race`, `orientation`
+
+<Warning>
+Reviewers should evaluate applications fairly and avoid bias based on demographics. Focus on technical skills, enthusiasm, and potential to benefit from DeltaHacks.
+</Warning>
+
+## Mobile Interface
+
+The grading portal is mobile-responsive:
+- Applications display as cards on mobile
+- Score slider for easy mobile input
+- Status filter dropdown
+
+## Related Pages
+
+- [User Management](/organizers/user-management) - Assign REVIEWER role
+- [Admin Dashboard](/organizers/admin-dashboard) - Overview statistics
+- [Event Management](/organizers/event-management) - Check-in accepted applicants

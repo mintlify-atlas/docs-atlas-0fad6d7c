@@ -1,0 +1,223 @@
+---
+title: User Management
+description: Managing user roles and permissions in the DeltaHacks Portal
+---
+
+## Overview
+
+User management allows admins to assign roles and control access to different parts of the portal. Access the role management interface at `/admin/roles`.
+
+## Role Types
+
+The DeltaHacks Portal uses role-based access control (RBAC) with the following roles:
+
+### HACKER
+Default role for all applicants. Provides access to:
+- Application submission
+- Dashboard after acceptance
+- Event schedule and resources
+- WiFi credentials (when checked in)
+
+### ADMIN
+Full administrative access to:
+- All admin pages and configuration
+- User role management
+- Application reviews and status updates
+- Event configuration
+- Equipment tracking
+- Judging setup
+
+### REVIEWER
+Limited to application review functions:
+- View all applications
+- Submit reviews and scores
+- View review statistics
+- Cannot change application status (admin-only)
+
+### FOOD_MANAGER
+Manages meal distribution:
+- Scan QR codes for food stations
+- View food scan logs
+- Track dietary restrictions
+
+### EVENT_MANAGER
+Manages event check-ins:
+- Scan QR codes for events
+- View event attendance logs
+- Create and manage event stations
+
+### GENERAL_SCANNER
+General scanning capabilities:
+- Scan for both food and events
+- Limited to scanning operations
+- Cannot manage stations
+
+### JUDGE
+Participates in project judging:
+- Access judging interface
+- Score projects using rubric
+- View assigned judging schedule
+- Submit judging results
+
+### SPONSER
+_(Note: typo in schema, should be SPONSOR)_
+For sponsor representatives (functionality varies).
+
+## Assigning Roles
+
+### Via Admin Interface
+
+1. Navigate to `/admin/roles`
+2. Search for user by name or email
+3. Click **Add Role** on the user row
+4. Select role from dropdown
+5. Confirm assignment
+
+### Removing Roles
+
+1. Click the role badge next to the user's name
+2. Confirm removal when prompted
+
+<Warning>
+Removing the ADMIN role from yourself may lock you out of admin functions. Ensure at least one other admin exists before removing your own admin role.
+</Warning>
+
+### Via Scanner (Judge Role Only)
+
+Admins can assign the JUDGE role by scanning a user's QR code at the special "judges" station:
+
+```tsx
+// Scan at station "judges"
+await scan({
+  id: userId,
+  stationId: "judges"
+})
+```
+
+This automatically adds the JUDGE role to the user.
+
+## Role Permissions Matrix
+
+| Feature | HACKER | ADMIN | REVIEWER | FOOD_MGR | EVENT_MGR | SCANNER | JUDGE |
+|---------|--------|-------|----------|----------|-----------|---------|-------|
+| Submit application | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| View own dashboard | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Review applications | ✗ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| Change app status | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Manage roles | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Scan QR codes | ✗ | ✓ | ✗ | ✓ | ✓ | ✓ | ✗ |
+| Manage stations | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Judge projects | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
+| View equipment logs | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+
+## Searching and Filtering Users
+
+The role management interface supports:
+
+### Search by Name/Email
+```tsx
+// Search users
+const users = await byRole({
+  searchName: "john@example.com",
+  page: 1,
+  limit: 10
+})
+```
+
+### Filter by Role
+Click any role badge to filter the user list to only show users with that role.
+
+### Pagination
+Users are paginated with 10 users per page. Use the pagination controls to navigate through results.
+
+## Viewing User Profiles
+
+Each user entry displays:
+- **Profile picture** (from OAuth provider)
+- **Name** (from account or application)
+- **Email address**
+- **Current roles** (as badge pills)
+- **Add/Remove role buttons**
+
+## Data Model
+
+Roles are stored as an array on the User model:
+
+```prisma
+model User {
+  id    String  @id @default(cuid())
+  name  String?
+  email String? @unique
+  role  Role[]  @default([HACKER])
+  // ... other fields
+}
+
+enum Role {
+  HACKER
+  ADMIN
+  REVIEWER
+  FOOD_MANAGER
+  EVENT_MANAGER
+  GENERAL_SCANNER
+  SPONSER
+  JUDGE
+}
+```
+
+Users can have multiple roles simultaneously. For example, a user can be both an ADMIN and a JUDGE.
+
+## API Endpoints
+
+### Add Role
+```tsx
+const addRole = trpc.user.addRole.useMutation()
+
+await addRole.mutateAsync({
+  id: userId,
+  role: "REVIEWER"
+})
+```
+
+### Remove Role
+```tsx
+const removeRole = trpc.user.removeRole.useMutation()
+
+await removeRole.mutateAsync({
+  id: userId,
+  role: "REVIEWER"
+})
+```
+
+### Get Users by Role
+```tsx
+const { data } = trpc.user.byRole.useQuery({
+  role: "ADMIN",
+  page: 1,
+  limit: 10,
+  searchName: "john"
+})
+```
+
+## Best Practices
+
+1. **Assign REVIEWER role** to trusted individuals for application grading
+2. **Use FOOD_MANAGER** for volunteers at meal stations
+3. **Assign EVENT_MANAGER** for workshop/event check-ins
+4. **Grant ADMIN sparingly** - only to core organizing team
+5. **Assign JUDGE** to external judges and sponsors judging projects
+
+<Note>
+Role changes take effect immediately and do not require the user to log out/in.
+</Note>
+
+## Mobile Responsiveness
+
+The role management interface adapts to mobile devices:
+- **Desktop**: Full table view with all columns
+- **Mobile**: Card-based layout with collapsible details
+
+## Related Pages
+
+- [Admin Dashboard](/organizers/admin-dashboard) - Overview of admin functions
+- [Application Reviews](/organizers/application-reviews) - Reviewer workflow
+- [Event Management](/organizers/event-management) - Scanner roles

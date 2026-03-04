@@ -1,0 +1,130 @@
+---
+title: Admin Dashboard
+description: Overview of the admin dashboard and key configuration options
+---
+
+## Overview
+
+The Admin Dashboard is the central hub for managing the DeltaHacks Portal. Access it at `/admin` after being assigned the `ADMIN` role.
+
+## Admin Role Assignment
+
+Only users with the `ADMIN` role can access administrative functions. See [User Management](/organizers/user-management) for details on assigning roles.
+
+## Dashboard Sections
+
+The admin dashboard provides quick access to all organizer tools:
+
+### Role Management
+Manage user roles and permissions across the platform.
+
+### Judging Management
+Configure judging schedules, tracks, and assignments.
+
+### Time Slots
+View and manage presentation time slots for project judging.
+
+### Grading Portal
+Access the application review and grading interface.
+
+### Station Config
+Manage food and event scanner options for QR code check-ins.
+
+### Scanner Events Log
+View comprehensive history of all food and event scans.
+
+### Sleeping Bags
+Track sleeping bag checkouts and returns.
+
+## Event Configuration
+
+The Config model stores key-value pairs for system-wide settings. Admins can configure:
+
+### Kill Switch
+
+Stop accepting new applications during emergencies or when capacity is reached.
+
+```tsx
+// Enable kill switch
+await setKillSwitch(true)
+
+// Re-enable applications
+await setKillSwitch(false)
+```
+
+<Note>
+The kill switch immediately prevents new application submissions. Existing applications remain accessible for review.
+</Note>
+
+### DeltaHacks Year Configuration
+
+Set the active DeltaHacks year (e.g., DH11, DH12) to determine which application model to use.
+
+```tsx
+// Set current year
+await setDhYear("DH12")
+```
+
+The year configuration:
+- Must match pattern `DH{number}` (e.g., DH11, DH12)
+- Determines which application table is active
+- Affects judging and review workflows
+
+### WiFi Configuration
+
+Provide WiFi credentials for attendees to access during the event.
+
+```tsx
+await setWifiConfig({
+  name: "DeltaHacks-WiFi",
+  password: "secure-password"
+})
+```
+
+Attendees can view WiFi details on their dashboard after checking in.
+
+## Analytics and Stats
+
+The dashboard provides real-time statistics:
+
+- **Total applications** by status (IN_REVIEW, ACCEPTED, REJECTED, etc.)
+- **Review progress** including number of reviews completed
+- **Check-in status** during the event
+- **Station activity** for food and event tracking
+
+## Database Operations
+
+All configuration changes are stored in the `Config` table:
+
+| Config Name | Type | Description |
+|-------------|------|-------------|
+| `killApplications` | boolean | Whether to accept new applications |
+| `dhYear` | string | Active DeltaHacks year (DH11, DH12, etc.) |
+| `wifiConfig` | JSON | WiFi network name and password |
+
+Configuration values are accessed via tRPC procedures:
+
+```tsx
+// Fetch current config
+const { dhYear, killApplications } = await getConfig()
+```
+
+## Access Control
+
+All admin endpoints require the `ADMIN` role:
+
+```tsx
+if (!ctx.session.user.role.includes(Role.ADMIN)) {
+  throw new TRPCError({ code: "UNAUTHORIZED" })
+}
+```
+
+<Warning>
+Admin operations are powerful and irreversible. Always verify changes before applying configuration updates.
+</Warning>
+
+## Related Pages
+
+- [User Management](/organizers/user-management) - Assign admin roles
+- [Application Reviews](/organizers/application-reviews) - Review workflow
+- [Event Management](/organizers/event-management) - Event operations

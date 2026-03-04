@@ -1,0 +1,161 @@
+---
+title: Equipment Router
+description: API reference for equipment management procedures
+---
+
+The Equipment router handles sleeping bag checkout/return tracking and statistics.
+
+## Procedures
+
+### getSleepingBagStats
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN role required)
+
+Get statistics about sleeping bag checkouts and returns.
+
+<ParamField path="No input parameters" />
+
+<ResponseField name="totalCheckouts" type="number">
+  Total number of sleeping bag checkouts
+</ResponseField>
+
+<ResponseField name="totalReturns" type="number">
+  Total number of sleeping bag returns
+</ResponseField>
+
+<ResponseField name="currentlyCheckedOut" type="number">
+  Number of sleeping bags currently checked out (checkouts - returns)
+</ResponseField>
+
+**Example:**
+```typescript
+const stats = await trpc.equipment.getSleepingBagStats.useQuery();
+// Returns: { totalCheckouts: 45, totalReturns: 30, currentlyCheckedOut: 15 }
+```
+
+---
+
+### getSleepingBagLogs
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN role required)
+
+Get paginated sleeping bag transaction logs.
+
+<ParamField path="limit" type="number" required>
+  Number of results per page (1-100, default 50)
+</ParamField>
+
+<ParamField path="cursor" type="string" optional>
+  Cursor for pagination (null for first page)
+</ParamField>
+
+<ParamField path="search" type="string" optional>
+  Search by user name, email, or application name
+</ParamField>
+
+<ParamField path="action" type="enum" optional>
+  Filter by action (CHECK_OUT or RETURN)
+</ParamField>
+
+<ResponseField name="items" type="array">
+  Array of equipment log entries
+</ResponseField>
+
+<ResponseField name="items[].id" type="string">
+  Log entry ID
+</ResponseField>
+
+<ResponseField name="items[].action" type="enum">
+  CHECK_OUT or RETURN
+</ResponseField>
+
+<ResponseField name="items[].type" type="enum">
+  Equipment type (SLEEPING_BAG)
+</ResponseField>
+
+<ResponseField name="items[].timestamp" type="datetime">
+  When the action occurred
+</ResponseField>
+
+<ResponseField name="items[].user" type="object">
+  User who borrowed/returned the equipment
+</ResponseField>
+
+<ResponseField name="items[].admin" type="object">
+  Admin who processed the transaction
+</ResponseField>
+
+<ResponseField name="nextCursor" type="string" optional>
+  Cursor for next page (undefined if no more results)
+</ResponseField>
+
+**Example:**
+```typescript
+const logs = await trpc.equipment.getSleepingBagLogs.useQuery({
+  limit: 50,
+  search: "john",
+  action: "CHECK_OUT"
+});
+```
+
+---
+
+### getUsersWithUnreturnedBags
+
+**Type:** Query  
+**Authentication:** Protected (ADMIN role required)
+
+Get list of users who currently have unreturned sleeping bags.
+
+<ParamField path="No input parameters" />
+
+<ResponseField name="user" type="object">
+  User information
+</ResponseField>
+
+<ResponseField name="user.id" type="string">
+  User ID
+</ResponseField>
+
+<ResponseField name="user.name" type="string">
+  User name
+</ResponseField>
+
+<ResponseField name="user.email" type="string" optional>
+  User email
+</ResponseField>
+
+<ResponseField name="user.DH12Application" type="object" optional>
+  Application info with firstName and lastName
+</ResponseField>
+
+<ResponseField name="admin" type="object">
+  Admin who processed the last checkout
+</ResponseField>
+
+<ResponseField name="lastCheckout" type="datetime">
+  When the sleeping bag was last checked out
+</ResponseField>
+
+**Example:**
+```typescript
+const unreturned = await trpc.equipment.getUsersWithUnreturnedBags.useQuery();
+// Returns array sorted by most recent checkout first
+```
+
+---
+
+## Equipment Actions
+
+The following equipment actions are tracked:
+
+- **CHECK_OUT** - User borrows equipment
+- **RETURN** - User returns equipment
+
+## Equipment Types
+
+Currently supported equipment types:
+
+- **SLEEPING_BAG** - Sleeping bags for overnight hackathon participants
