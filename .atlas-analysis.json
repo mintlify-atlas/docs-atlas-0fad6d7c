@@ -1,0 +1,105 @@
+{
+  "projectType": "saas",
+  "projectName": "DeltaHacks Portal",
+  "projectDescription": "A comprehensive event management portal for DeltaHacks hackathon with applications, judging, and admin tools.",
+  "theme": "palm",
+  "primaryColor": "#7C3AED",
+  "lightColor": "#A78BFA",
+  "darkColor": "#5B21B6",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "For Hackers",
+            "pages": [
+              "hackers/application",
+              "hackers/dashboard",
+              "hackers/judging",
+              "hackers/qr-codes"
+            ]
+          },
+          {
+            "group": "For Organizers",
+            "pages": [
+              "organizers/admin-dashboard",
+              "organizers/user-management",
+              "organizers/application-reviews",
+              "organizers/event-management",
+              "organizers/equipment-tracking",
+              "organizers/judging-setup"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/architecture",
+              "development/database-schema",
+              "development/trpc-api",
+              "development/authentication",
+              "development/contributing"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "tRPC Routers",
+            "pages": [
+              "api/application",
+              "api/admin",
+              "api/judging",
+              "api/scanner",
+              "api/users",
+              "api/equipment",
+              "api/reviewers",
+              "api/file"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "OAuth2 authentication with multiple providers",
+    "Hacker application and acceptance system",
+    "Application review and grading workflow",
+    "Project judging with rubric-based scoring",
+    "QR code meal tickets and event check-in",
+    "Equipment checkout and tracking",
+    "Event scheduling and timeslot management",
+    "Role-based access control for multiple user types",
+    "Admin dashboard for organizer management",
+    "Integration with SendGrid, PostHog, and AWS S3"
+  ],
+  "publicApiSurface": [
+    "application.create",
+    "application.get",
+    "application.update",
+    "admin.updateUserRole",
+    "admin.bulkUpdateStatus",
+    "judging.createProject",
+    "judging.submitJudgingResult",
+    "judging.getLeaderboard",
+    "scanner.checkIn",
+    "scanner.logMeal",
+    "users.getProfile",
+    "users.updateProfile",
+    "equipment.checkOut",
+    "equipment.return",
+    "reviewers.submitReview",
+    "reviewers.getApplications",
+    "file.getUploadUrl"
+  ]
+}
